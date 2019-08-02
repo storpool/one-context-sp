@@ -25,6 +25,7 @@ SCRIPTS_DIR=${SCRIPTS_DIR:-/etc/one-context.d}
 RUNTIME_DIR=${RUNTIME_DIR:-/var/run/one-context}
 LOCK_FILE="${RUNTIME_DIR}/one-context.lock"
 CONTEXT_BASE="${RUNTIME_DIR}/context.sh"
+CONTEXT_DIR="/var/lib/one-context"
 SYSLOG_TAG="$(basename $0)"
 
 [ -d "${RUNTIME_DIR}" ] || mkdir -m 0700 -p "${RUNTIME_DIR}"
@@ -216,6 +217,9 @@ function get_new_context {
     fi
 
     chmod 0400 "${CONTEXT_NEW}"
+    split_context "$CONTEXT_NEW" "$CONTEXT_DIR/new"
+    check_context_dir "$CONTEXT_DIR/new" "$CONTEXT_DIR/current" \
+	    "$CONTEXT_DIR/changed" "$CONTEXT_DIR/deleted"
 }
 
 function mount_dir
@@ -248,6 +252,70 @@ function check_context {
     fi
 
     return ${_rtn}
+}
+
+# Split context file to one variable per file
+function split_context {
+    local context_file=$1
+    local new_dir=$2
+
+    if ! [ -d "$new_dir" ] ; then
+        mkdir -p "$new_dir"
+	chmod 0700 "$new_dir"
+    fi
+    rm -f "$new_dir"/* || true
+    egrep -e '^[a-zA-Z\-\_0-9]*=' "$context_file" | \
+    while IFS== read name value ; do
+        if [ "${name:0:1}" == "#" ] ; then
+            :  # skip comments
+        else
+            value=${value#\'} # remove quotes
+            value=${value%\'}
+            echo -n "$value" > "$new_dir/$name"
+	    chmod 0400 "$new_dir/$name"
+        fi
+    done
+}
+
+# compare new and current context
+function check_context_dir {
+    local new_dir=$1
+    local current_dir=$2
+    local changed_dir=$3
+    local deleted_dir=$4
+
+    if ! [ -d "$current_dir" ] ; then
+        mkdir -p "$current_dir"
+	chmod 0700 "$current_dir"
+    fi
+
+    if ! [ -d "$changed_dir" ] ; then
+        mkdir -p "$changed_dir"
+	chmod 0700 "$changed_dir"
+    fi
+    rm -f "$changed_dir"/* || true
+
+    if ! [ -d "$deleted_dir" ] ; then
+        mkdir -p "$deleted_dir"
+	chmod 0700 "$deleted_dir"
+    fi
+    rm -f "$deleted_dir"/* || true
+
+    # Check for new and changed vars
+    for f in "$new_dir"/* ; do
+        bf=$(basename "$f")
+        if diff -qN "$new_dir/$bf" "$current_dir/$bf" >/dev/null 2>&1 ; then
+            cp "$new_dir/$fb" "$changed_dir/$fb"
+        fi
+    done
+
+    # Check for deleted vars
+    for f in "$current_dir"/* ; do
+        bf=$(basename "$f")
+	if ! [ -f "$new_dir/$bf" ] ; then
+            cp "$current_dir/$fb" "$deleted_dir/$fb"
+	fi
+    done
 }
 
 function run_context {
@@ -334,3 +402,5 @@ else
 fi
 
 log info "Done"
+
+
