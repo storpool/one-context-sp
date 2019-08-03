@@ -1,35 +1,13 @@
 #!/usr/bin/env bash
 
+. $(dirname $0)/lib-one-context.sh
+
 _kernel="$(uname -s)"
 if [ "${_kernel}" = 'FreeBSD' ]; then
     SED_I="sed -i ''"
 else
     SED_I="sed -i''"
 fi
-
-CONTEXT_DIR=/var/lib/one-context
-
-# check if any variable matching $vars is changed
-# usage: if context_changed "ETH*_ALIAS*" "PASSWORD*" ; then
-function context_changed() {
-
-	CHANGED_VARS=()
-	DELETED_VARS=()
-
-	for var in "$@" ; do
-		for f in "$CONTEXT_DIR"/changed/$var ; do
-			if [ -f "$f" ] ; then
-				CHANGED_VARS+=("$var")
-			fi
-		done
-		for f in "$CONTEXT_DIR"/deleted/$var ; do
-			if [ -f "$f" ] ; then
-				DELETD_VARS+=("$var")
-			fi
-		done
-	done
-	return [ -n "$CHANGED_VARS$DELETED_VARS" ]
-}
 
 
 function set_hostname() {
@@ -110,6 +88,10 @@ function update_hosts() {
 
 #####
 
+if ! context_changed SET_HOSTNAME ; then
+	exit 0
+fi
+
 first_ip=$(get_first_ip)
 
 if [ -n "$SET_HOSTNAME" ]; then
@@ -118,18 +100,6 @@ if [ -n "$SET_HOSTNAME" ]; then
 
 elif [ -n "$DNS_HOSTNAME" ]; then
     name=$(get_dns_name "${first_ip}")
-
-elif [ "${EC2_HOSTNAME}" = 'YES' ]; then
-    # try to quickly get hostname from the EC2 metadata server or
-    # create hostname based on the first IPv4 (format: "ip-1-2-3-4")
-    name=$(curl -sf -m 5 'http://169.254.169.254/latest/meta-data/local-hostname' 2>/dev/null)
-    if [ -z "${name}" ]; then
-        name="$(echo "${first_ip}" | grep -x '[0-9\.]\+' | tr . -)"
-        if [ -n "${name}" ]; then
-            name="ip-${name}"
-        fi
-    fi
-fi
 
 if [ -n "${name}" ]; then
     # split host and domain names
