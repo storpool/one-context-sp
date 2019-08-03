@@ -16,6 +16,12 @@
 # limitations under the License.                                             #
 #--------------------------------------------------------------------------- #
 
+. $(dirname $0)/lib-one-context.sh
+
+if ! context_changed 'ETH[0-9]+_DNS' '^ETH[0-9]+_SEARCH_DOMAIN$' ; then
+    exit 0
+fi
+
 export DNS_VARIABLES="DNS $(env | sed 's/=.*$//' | grep -E '^ETH[0-9]+_DNS$' | sort)"
 
 export SEARCH_VARIABLES="SEARCH_DOMAIN $(env | sed 's/=.*$//' | grep -E '^ETH[0-9]+_SEARCH_DOMAIN$' | sort)"
