@@ -16,7 +16,11 @@
 # limitations under the License.                                             #
 #--------------------------------------------------------------------------- #
 
-COMMAND=${1}
+. $(dirname $0)/lib-one-context.sh
+
+if ! context_changed 'ETH[0-9]*' ; then
+    exit 0
+fi
 
 # Gets IP address from a given MAC
 mac2ip() {
@@ -28,44 +32,14 @@ mac2ip() {
     let ip_d=0x`echo $mac | cut -d: -f 6`
 
     ip="$ip_a.$ip_b.$ip_c.$ip_d"
-
     echo $ip
-}
-
-# Gets the network part of an IP
-get_network() {
-    network=$(get_iface_var "NETWORK")
-
-    if [ -z "$network" ]; then
-        network="$(echo $IP | cut -d'.' -f1,2,3).0"
-    fi
-
-    echo $network
-}
-
-# Gets the network mask
-get_mask() {
-    mask=$(get_iface_var "MASK")
-
-    if [ -z "$mask" ]; then
-        mask="255.255.255.0"
-    fi
-
-    echo $mask
-}
-
-# Gets device MTU
-get_mtu() {
-    mtu=$(get_iface_var "MTU")
-
-    echo $mtu
 }
 
 is_gateway() {
     if [ -z "$GATEWAY_IFACE_NUM" ]; then
         true
     else
-        [ "$IFACE_NUM" = "$GATEWAY_IFACE_NUM" ]
+        [ "$IFACE_INDEX" = "$GATEWAY_IFACE_NUM" ]
     fi
 }
 
@@ -78,234 +52,202 @@ get_gateway() {
     fi
 }
 
-# Gets the network gateway6
-get_gateway6() {
-    if is_gateway; then
-        get_iface_var "GATEWAY6"
-    fi
-}
-
-get_ip() {
-    ip=$(get_iface_var "IP")
-
-    echo $ip
-}
-
 get_iface_var() {
     var_name="${UPCASE_DEV}_$1"
-    var=$(eval "echo \"\${$var_name}\"")
-
-    echo $var
+    echo ${!var_name}
 }
 
-gen_iface_conf() {
-    cat <<EOT
-NETMASK=$MASK
-IPADDR=$IP
-EOT
-
-    if [ -n "$GATEWAY" ]; then
-        if [ "$CONFIG_PATH" = "/etc/sysconfig/network" ]; then
-            echo "default $GATEWAY - $DEV" >> /etc/sysconfig/network/ifroute-$DEV
-        else
-            echo "GATEWAY=$GATEWAY"
-        fi
-    fi
-
-    if [ -n "$MTU" ]; then
-        echo "MTU=$MTU"
-    fi
-}
-
-gen_alias_conf() {
-    cat <<EOT
-IPADDR${ALIAS_NUM}="${IP}"
-NETMASK${ALIAS_NUM}="${MASK}"
-EOT
-}
-
-gen_alias6_conf() {
-    if [ "$CONFIG_PATH" = "/etc/sysconfig/network" ]; then
-        echo "IPADDR_A6A${ALIAS_NUM}=$IP6/${IP6_PREFIX_LENGTH:-64}"
-    else
-        IPV6ADDR_SECONDARIES="${IPV6ADDR_SECONDARIES} ${IP6}/${IP6_PREFIX_LENGTH:-64}"
-    fi
-
-    if [ -n "$IP6_ULA" ]; then
-        if [ "$CONFIG_PATH" = "/etc/sysconfig/network" ]; then
-            echo "IPADDR_A6B${ALIAS_NUM}=$IP6_ULA/64"
-        else
-            IPV6ADDR_SECONDARIES="${IPV6ADDR_SECONDARIES} ${IP6_ULA}/64"
-        fi
-    fi
-}
-
-gen_iface6_conf() {
-    if [ "$CONFIG_PATH" = "/etc/sysconfig/network" ]; then
-        echo "IPADDR_6A=$IP6/${IP6_PREFIX_LENGTH:-64}"
-
-        cat <<EOT >> /etc/sysconfig/network/ifsysctl-$DEV
-net.ipv6.conf.\$SYSCTL_IF.autoconf = 0
-net.ipv6.conf.\$SYSCTL_IF.accept_ra = 0
-EOT
-    else
-        cat <<EOT
-IPV6INIT=yes
-IPV6ADDR=$IP6/${IP6_PREFIX_LENGTH:-64}
-IPV6_AUTOCONF=no
-EOT
-    fi
-
-    if [ -n "$IP6_ULA" ]; then
-        if [ "$CONFIG_PATH" = "/etc/sysconfig/network" ]; then
-            echo "IPADDR_6B=$IP6_ULA/64"
-        else
-            IPV6ADDR_SECONDARIES="${IPV6ADDR_SECONDARIES} ${IP6_ULA}/64"
-        fi
-    fi
-
-    if [ -n "$GATEWAY6" ]; then
-        if [ "$CONFIG_PATH" = "/etc/sysconfig/network" ]; then
-            echo "default $GATEWAY6 - $DEV" >> /etc/sysconfig/network/ifroute-$DEV
-        else
-            echo "IPV6_DEFAULTGW=$GATEWAY6"
-        fi
-    fi
-
-    if [ -n "$MTU" ]; then
-        echo "IPV6_MTU=$MTU"
-    fi
-}
 
 get_interface_mac()
 {
-    ip link show | awk '/^[0-9]+: [A-Za-z0-9@]+:/ { device=$2; gsub(/:/, "",device); split(device,dev,"@")} /link\/ether/ { print dev[1]  " " $2 }'
+    MAC_LIST=$(
+        ip link show | awk '/^[0-9]+: [A-Za-z0-9@]+:/ { device=$2; gsub(/:/, "",device); split(device,dev,"@")} /link\/ether/ { print dev[1]  " " $2 }'
+    )
 }
 
-get_context_interfaces()
+get_changed_interfaces()
 {
-    env | grep -E "^ETH[0-9]+_MAC=" | sed 's/_.*$//' | sort
+    for v in "${CHANGED_VARS[@]}" ; do
+        echo "$v"
+    done | grep -E "^ETH[0-9]+_" | egrep -v '^ETH[0-9]+_ALIAS' \
+	    | cut -d _ -f 1 | sort | uniq
 }
 
 get_interface_alias()
 {
-    env | grep -E "^ETH${INDEX}_ALIAS[0-9]+_MAC=" | cut -d '_' -f 2 | sort
+    for v in "${CHANGED_VARS[@]}" ; do
+        echo "$v"
+    done | grep -E "^ETH${INDEX}_ALIAS[0-9]+_" | cut -d _ -f 2 | sort | uniq
+}
+
+get_deleted_interfaces()
+{
+    for v in "${DELETED_VARS[@]}" ; do
+        echo "$v"
+    done | grep -E "^ETH[0-9]+_MAC" | cut -d _ -f 1 | sort | uniq
+}
+
+get_deleted_aliases()
+{
+    for v in "${DELETED_VARS[@]}" ; do
+        echo "$v"
+    done | grep -E "^ETH[0-9]+_ALIAS[0-9]+_IP" | cut -d _ -f 1,2 | sort | uniq
 }
 
 get_dev()
 {
-    list="$1"
-    mac="$2"
-
-    echo "$list" | grep "$mac" | cut -d' ' -f1 | tail -n1
+    local mac="$1"
+    echo "$MAC_LIST" | grep "$mac" | cut -d' ' -f1 | tail -n1
 }
 
-gen_network_configuration()
-{
-    if [ -d /etc/sysconfig/network-scripts ]; then
-        CONFIG_PATH=/etc/sysconfig/network-scripts
-    elif [ -d /etc/sysconfig/network ]; then
-        CONFIG_PATH=/etc/sysconfig/network
-    fi
 
-    INTERFACE_MAC=$(get_interface_mac)
-    CONTEXT_INTERFACES=$(get_context_interfaces)
-    GATEWAY_IFACE_NUM=$(echo "$GATEWAY_IFACE" | sed 's/^ETH//')
+add_or_replace(){
+	local file="$1"
+	local attr="$2"
+	local value="$3"
 
-    for interface in $CONTEXT_INTERFACES; do
-        UPCASE_DEV=$interface
-        MAC=$(get_iface_var "MAC")
-        DEV=$(get_dev "$INTERFACE_MAC" "$MAC")
-        IFACE_NUM=$(echo "$UPCASE_DEV" | sed 's/^ETH//')
+	if egrep "^${attr}=" "$file" ; then
+		sed -i "s/^${attr}=.*/${attr}=${value}/" "$file"
+	else
+		echo "${attr}=${value}" >> "$file"
+	fi
 
-        IP=$(get_ip)
-        NETWORK=$(get_network)
-        MASK=$(get_mask)
-        MTU=$(get_mtu)
-        GATEWAY=$(get_gateway)
+}
 
-        IP6=$(get_iface_var "IP6")
-        [[ -z $IP6 ]] && IP6=$(get_iface_var "IPV6")
-        IP6_PREFIX_LENGTH=$(get_iface_var "IP6_PREFIX_LENGTH")
-        IP6_ULA=$(get_iface_var "IP6_ULA")
-        GATEWAY6=$(get_gateway6)
+delete_interface(){
+	IFACE="$1"
 
-        # cumulative variable
-        IPV6ADDR_SECONDARIES=''
+	IF_INDEX=${IFACE#ETH}
+	UPCASE_DEV="$IFACE"
+	MAC=$(get_iface_var "MAC")
+	DEV=$(get_dev "$MAC")
+        [ -z "${DEV}" ] && return 1
 
-        [ -z "${IP}${IP6}" ] && continue
-        [ -z "${DEV}" ] && continue
+	ifdown "$DEV"
+	CFG_FILE="$CONFIG_PATH/ifcfg-${DEV}"
+	rm -f "${CFG_FILE}"
+}
 
-        (
-            rm -f /etc/sysconfig/network/ifroute-$DEV
-            rm -f /etc/sysconfig/network/ifsysctl-$DEV
+delete_alias(){
+	IFACE="$1"
+	ALIAS="$2"
 
-            cat <<EOT
+	IF_INDEX=${IFACE#ETH}
+	ALIAS_INDEX="${ALIAS#ALIAS}"
+	UPCASE_DEV="$IFACE"
+	MAC=$(get_iface_var "MAC")
+	DEV=$(get_dev "$MAC")
+        [ -z "${DEV}" ] && return 1
+
+	CFG_FILE="$CONFIG_PATH/ifcfg-${DEV}:${ALIAS_INDEX}"
+	rm -f "${CFG_FILE}"
+}
+
+set_interface(){
+	IFACE="$1"
+	IF_INDEX=${IFACE#ETH}
+	UPCASE_DEV="$IFACE"
+	MAC=$(get_iface_var "MAC")
+	DEV=$(get_dev "$MAC")
+
+        [ -z "${DEV}" ] && return 1
+
+	CFG_FILE="$CONFIG_PATH/ifcfg-$DEV"
+	if ! [ -f "$CFG_FILE" ] ; then
+		cat << EOT > $CFG_FILE
 DEVICE=$DEV
-BOOTPROTO=static
+BOOTPROTO=none
 NM_CONTROLLED=no
 TYPE=Ethernet
+ONBOOT=yes
 EOT
-            if [ "$CONFIG_PATH" = "/etc/sysconfig/network" ]; then
-                echo "STARTMODE=auto"
-            else
-                echo "ONBOOT=yes"
-            fi
+	fi
+	for v in "${CHANGED_VARS[@]}" ; do
+		case "$v" in
+			"${IFACE}_IP" )
+				IP=$(get_iface_var "IP")
+				add_or_replace "$CFG_FILE" "IPADDR" "${IP}"
+				;;
+			"${IFACE}_MASK" )
+				MASK=$(get_iface_var "MASK")
+				add_or_replace "$CFG_FILE" "NETMASK" "${MASK}"
+				;;
+			"${IFACE}_GATEWAY" )
+				GATEWAY=$(get_gateway)
+				add_or_replace "$CFG_FILE" "GATEWAY" "${GATEWAY}"
+				;;
+			"${IFACE}_MTU" )
+				MTU=$(get_iface_var "MTU")
+				add_or_replace "$CFG_FILE" "MTU" "${MTU}"
+				;;
+		esac
+	done
 
-            [[ -n $IP ]] && gen_iface_conf
-            [[ -n $IP6 ]] && gen_iface6_conf
-
-            INDEX=${interface: -1}
-            ALIAS=$(get_interface_alias)
-            ALIAS_NUM=0
-
-            for nic_alias in $ALIAS; do
-                UPCASE_DEV="ETH${INDEX}_${nic_alias}"
-                IP=$(get_ip)
-                MASK=$(get_mask)
-
-                IP6=$(get_iface_var "IP6")
-                [[ -z $IP6 ]] && IP6=$(get_iface_var "IPV6")
-                IP6_PREFIX_LENGTH=$(get_iface_var "IP6_PREFIX_LENGTH")
-                IP6_ULA=$(get_iface_var "IP6_ULA")
-
-                EXTERNAL=$(get_iface_var "EXTERNAL")
-                EXTERNAL=${EXTERNAL^^}
-
-                if [ -z "${EXTERNAL}" ] || [ "$EXTERNAL" = "NO" ]; then
-                    [ -n "${IP}"  ] && gen_alias_conf
-                    [ -n "${IP6}" ] && gen_alias6_conf
-
-                    if [ -n "${IP}${IP6}" ]; then
-                        ALIAS_NUM=$((ALIAS_NUM + 1))
-                    fi
-                fi
-            done
-
-            # on Red Hats, we need just a single configuration
-            # entry with all additional IPv6 addresses
-            if [ -n "${IPV6ADDR_SECONDARIES}" ]; then
-                echo "IPV6ADDR_SECONDARIES='${IPV6ADDR_SECONDARIES## }'"
-            fi
-        ) > ${CONFIG_PATH}/ifcfg-${DEV}
-
-        ifup ${DEV}
-
-    done
 }
 
-configure_network()
-{
-    gen_network_configuration
+set_alias(){
+	IFACE="$1"
+	ALIAS="$2"
+	IFALIAS="${IFACE}_${ALIAS}"
 
-    if [ "${COMMAND}" = 'reconfigure' ]; then
-        service network restart
-    fi
+	IF_INDEX=${IFACE#ETH}
+	UPCASE_DEV="$IFACE"
+	MAC=$(get_iface_var "MAC")
+	DEV=$(get_dev "$MAC")
 
-    sleep 2
+        [ -z "${DEV}" ] && return 1
+
+	ALIAS_INDEX="${ALIAS#ALIAS}"
+	CFG_FILE="$CONFIG_PATH/ifcfg-${DEV}:${ALIAS_INDEX}"
+
+	UPCASE_DEV="${IFALIAS}"
+	IP=$(get_iface_var "IP")
+	MASK=$(get_iface_var "MASK")
+	if ! [ -f "$CFG_FILE" ] ; then
+		touch "${CFG_FILE}"
+	fi
+
+	for v in "${CHANGED_VARS[@]}" ; do
+		case "$v" in
+			"${IFALIAS}_IP" )
+				IP=$(get_iface_var "IP")
+				add_or_replace "$CFG_FILE" "IPADDR" "${IP}"
+				;;
+			"${IFALIAS}_MASK" )
+				MASK=$(get_iface_var "MASK")
+				add_or_replace "$CFG_FILE" "NETMASK" "${MASK}"
+				;;
+		esac
+	done
+
 }
 
-[ -z "$(env | cut -d= -f1 | grep -E '^ETH[0-9]+_IPV*6*')" ] && exit 0
 
-configure_network
+##################################
+
+# delete aliases
+RECONFIGURED_DEV=()
+get_deleted_aliases | while IFS=_ read if_name alias ; do
+	delete_alias "$if_name" "$alias"
+	RECONFIGURED_DEV+=("$DEV")
+done
+for d in $(echo ${RECONFIGURED_DEV[@]} | tr ' ' '\n' | sort | uniq ) ; do
+	ifup $d
+done
+
+# delete interfaces
+get_deleted_interfaces | while read if_name ; do
+	delete_interface "$if_name"
+done
+
+# add interfaces
+RECONFIGURED_DEV=()
+get_changed_interfaces | while read if_name ; do
+	set_interface "$if_name"
+	RECONFIGURED_DEV+=($DEV)
+	INDEX=${ifname#ETH}
+	for alias in $(get_interface_alias) ; do
+		set_alias "$if_name" "$alias"
+	done
+done
 
