@@ -186,6 +186,11 @@ EOT
 				add_or_replace "$CFG_FILE" "MTU" "${MTU}"
 				context_done "$v"
 				;;
+			"${IFACE}_ZONE" )
+				ZONE=$(get_iface_var "ZONE")
+				add_or_replace "$CFG_FILE" "ZONE" "${ZONE}"
+				context_done "$v"
+				;;
 		esac
 	done
 
