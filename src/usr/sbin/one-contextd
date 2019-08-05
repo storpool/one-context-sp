@@ -99,8 +99,7 @@ function execute_scripts {
     if [ "${_type}" = 'local' ]; then
         local _scripts=$(ls ${SCRIPTS_DIR}/loc-* 2>/dev/null)
     elif [ "${_type}" = 'network' ]; then
-        local _scripts=$(ls ${SCRIPTS_DIR}/!(net-*|loc-*) 2>/dev/null; \
-                         ls ${SCRIPTS_DIR}/net-* 2>/dev/null)
+        local _scripts=$(ls ${SCRIPTS_DIR}/net-* 2>/dev/null)
     fi
 
     export MOUNT_DIR
@@ -302,18 +301,18 @@ function check_context_dir {
     rm -f "$deleted_dir"/* || true
 
     # Check for new and changed vars
-    for f in "$new_dir"/* ; do
+    find "$new_dir" -maxdepth 1 -type f | while read f; do
         bf=$(basename "$f")
-        if diff -qN "$new_dir/$bf" "$current_dir/$bf" >/dev/null 2>&1 ; then
-            cp "$new_dir/$fb" "$changed_dir/$fb"
+        if ! diff -qN "$new_dir/$bf" "$current_dir/$bf" >/dev/null 2>&1 ; then
+            cp "$new_dir/$bf" "$changed_dir/$bf"
         fi
     done
 
     # Check for deleted vars
-    for f in "$current_dir"/* ; do
+    find "$current_dir" -maxdepth 1 -type f | while read f; do
         bf=$(basename "$f")
 	if ! [ -f "$new_dir/$bf" ] ; then
-            cp "$current_dir/$fb" "$deleted_dir/$fb"
+            cp "$current_dir/$bf" "$deleted_dir/$bf"
 	fi
     done
 }

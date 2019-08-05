@@ -100,6 +100,7 @@ if [ -n "$SET_HOSTNAME" ]; then
 
 elif [ -n "$DNS_HOSTNAME" ]; then
     name=$(get_dns_name "${first_ip}")
+fi
 
 if [ -n "${name}" ]; then
     # split host and domain names

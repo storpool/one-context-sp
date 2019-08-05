@@ -22,6 +22,8 @@ if ! context_changed 'ETH[0-9]*' ; then
     exit 0
 fi
 
+CONFIG_PATH=/etc/sysconfig/network-scripts
+
 # Gets IP address from a given MAC
 mac2ip() {
     mac=$1
@@ -73,11 +75,11 @@ get_changed_interfaces()
 	    | cut -d _ -f 1 | sort | uniq
 }
 
-get_interface_alias()
+get_changed_aliases()
 {
     for v in "${CHANGED_VARS[@]}" ; do
         echo "$v"
-    done | grep -E "^ETH${INDEX}_ALIAS[0-9]+_" | cut -d _ -f 2 | sort | uniq
+    done | grep -E "^ETH[0-9]+_ALIAS[0-9]+_" | cut -d _ -f 1,2 | sort | uniq
 }
 
 get_deleted_interfaces()
@@ -167,18 +169,22 @@ EOT
 			"${IFACE}_IP" )
 				IP=$(get_iface_var "IP")
 				add_or_replace "$CFG_FILE" "IPADDR" "${IP}"
+				context_done "$v"
 				;;
 			"${IFACE}_MASK" )
 				MASK=$(get_iface_var "MASK")
 				add_or_replace "$CFG_FILE" "NETMASK" "${MASK}"
+				context_done "$v"
 				;;
 			"${IFACE}_GATEWAY" )
 				GATEWAY=$(get_gateway)
 				add_or_replace "$CFG_FILE" "GATEWAY" "${GATEWAY}"
+				context_done "$v"
 				;;
 			"${IFACE}_MTU" )
 				MTU=$(get_iface_var "MTU")
 				add_or_replace "$CFG_FILE" "MTU" "${MTU}"
+				context_done "$v"
 				;;
 		esac
 	done
@@ -212,10 +218,12 @@ set_alias(){
 			"${IFALIAS}_IP" )
 				IP=$(get_iface_var "IP")
 				add_or_replace "$CFG_FILE" "IPADDR" "${IP}"
+				context_done "$v"
 				;;
 			"${IFALIAS}_MASK" )
 				MASK=$(get_iface_var "MASK")
 				add_or_replace "$CFG_FILE" "NETMASK" "${MASK}"
+				context_done "$v"
 				;;
 		esac
 	done
@@ -224,30 +232,45 @@ set_alias(){
 
 
 ##################################
+set -x
+
+get_interface_mac
 
 # delete aliases
 RECONFIGURED_DEV=()
-get_deleted_aliases | while IFS=_ read if_name alias ; do
+while IFS=_ read if_name alias ; do
 	delete_alias "$if_name" "$alias"
 	RECONFIGURED_DEV+=("$DEV")
-done
+	context_done_delete "${if_name}_${alias}_*"
+done < <(get_deleted_aliases)
 for d in $(echo ${RECONFIGURED_DEV[@]} | tr ' ' '\n' | sort | uniq ) ; do
 	ifup $d
 done
 
 # delete interfaces
-get_deleted_interfaces | while read if_name ; do
+for if_name in $(get_deleted_interfaces) ; do
 	delete_interface "$if_name"
+	context_done_delete "${if_name}_*"
 done
 
 # add interfaces
 RECONFIGURED_DEV=()
-get_changed_interfaces | while read if_name ; do
+for if_name in $(get_changed_interfaces) ; do
 	set_interface "$if_name"
 	RECONFIGURED_DEV+=($DEV)
-	INDEX=${ifname#ETH}
-	for alias in $(get_interface_alias) ; do
-		set_alias "$if_name" "$alias"
-	done
 done
 
+# add /set aliases
+while IFS=_ read if_name alias ; do
+	set_alias "$if_name" "$alias"
+	RECONFIGURED_DEV+=($DEV)
+	context_done "${if_name}_${alias}_*"
+done < <(get_changed_aliases)
+
+for if_name in $(get_changed_interfaces) ; do
+	context_done "${if_name}_*"
+done
+
+for d in $(echo ${RECONFIGURED_DEV[@]} | tr ' ' '\n' | sort | uniq ) ; do
+	ifup $d
+done
