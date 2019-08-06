@@ -91,9 +91,17 @@ get_deleted_interfaces()
 
 get_deleted_aliases()
 {
-    for v in "${DELETED_VARS[@]}" ; do
-        echo "$v"
-    done | grep -E "^ETH[0-9]+_ALIAS[0-9]+_IP" | cut -d _ -f 1,2 | sort | uniq
+    (
+        # All aliases with deleted _IP
+        for v in "${DELETED_VARS[@]}" ; do
+            echo "$v"
+        done | grep -E "^ETH[0-9]+_ALIAS[0-9]+_IP" | cut -d _ -f 1,2
+	# ... and all aliases with added _DETACH
+	# this is introduced in 5.8.4.12
+        for v in "${CHANGED_VARS[@]}" ; do
+            echo "$v"
+        done | egrep "^ETH[0-9]+_ALIAS[0-9]+_DETACH" | cut -d _ -f 1,2
+    ) | sort | uniq
 }
 
 get_dev()
@@ -193,7 +201,6 @@ EOT
 				;;
 		esac
 	done
-
 }
 
 set_alias(){
@@ -206,12 +213,22 @@ set_alias(){
 	MAC=$(get_iface_var "MAC")
 	DEV=$(get_dev "$MAC")
 
+	# If ETH0_NOALIAS=YES, dont create any aliases
+	NO_ALIAS=$(get_iface_var "NOALIAS")
+	[ -n "${NO_ALIAS}" ] && return 0
+
         [ -z "${DEV}" ] && return 1
 
 	ALIAS_INDEX="${ALIAS#ALIAS}"
 	CFG_FILE="$CONFIG_PATH/ifcfg-${DEV}:${ALIAS_INDEX}"
-
 	UPCASE_DEV="${IFALIAS}"
+
+	# Is this a detach command ?
+	DETACHED=$(get_iface_var "DETACH")
+	if [ "${DETACHED^^}" = 'YES' ] ; then
+		return 0
+	fi
+
 	IP=$(get_iface_var "IP")
 	MASK=$(get_iface_var "MASK")
 	if ! [ -f "$CFG_FILE" ] ; then
@@ -244,9 +261,10 @@ get_interface_mac
 # delete aliases
 RECONFIGURED_DEV=()
 while IFS=_ read if_name alias ; do
-	delete_alias "$if_name" "$alias"
-	RECONFIGURED_DEV+=("$DEV")
-	context_done_delete "${if_name}_${alias}_*"
+	if delete_alias "$if_name" "$alias" ; then
+		RECONFIGURED_DEV+=("$DEV")
+		context_done_delete "${if_name}_${alias}_*"
+	fi
 done < <(get_deleted_aliases)
 for d in $(echo ${RECONFIGURED_DEV[@]} | tr ' ' '\n' | sort | uniq ) ; do
 	ifup $d
@@ -254,25 +272,30 @@ done
 
 # delete interfaces
 for if_name in $(get_deleted_interfaces) ; do
-	delete_interface "$if_name"
-	context_done_delete "${if_name}_*"
+	if delete_interface "$if_name" ; then
+		context_done_delete "${if_name}_*"
+	fi
 done
 
 # add interfaces
 RECONFIGURED_DEV=()
+INTERFACES_DONE=()
 for if_name in $(get_changed_interfaces) ; do
-	set_interface "$if_name"
-	RECONFIGURED_DEV+=($DEV)
+	if set_interface "$if_name" ; then
+		RECONFIGURED_DEV+=($DEV)
+		INTERFACES_DONE+=($if_name)
+	fi
 done
 
 # add /set aliases
 while IFS=_ read if_name alias ; do
-	set_alias "$if_name" "$alias"
-	RECONFIGURED_DEV+=($DEV)
-	context_done "${if_name}_${alias}_*"
+	if set_alias "$if_name" "$alias" ; then
+		RECONFIGURED_DEV+=($DEV)
+		context_done "${if_name}_${alias}_*"
+	fi
 done < <(get_changed_aliases)
 
-for if_name in $(get_changed_interfaces) ; do
+for if_name in "${INTERFACES_DONE[@]}" ; do
 	context_done "${if_name}_*"
 done
 
