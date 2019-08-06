@@ -16,6 +16,8 @@
 # limitations under the License.                                             #
 #--------------------------------------------------------------------------- #
 
+unset NETWORK
+
 . $(dirname $0)/lib-one-context.sh
 
 if ! context_changed 'ETH[0-9]*' ; then
