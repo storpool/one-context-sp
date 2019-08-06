@@ -72,21 +72,21 @@ get_changed_interfaces()
     for v in "${CHANGED_VARS[@]}" ; do
         echo "$v"
     done | grep -E "^ETH[0-9]+_" | egrep -v '^ETH[0-9]+_ALIAS' \
-	    | cut -d _ -f 1 | sort | uniq
+	    | cut -d _ -f 1 | sort -u
 }
 
 get_changed_aliases()
 {
     for v in "${CHANGED_VARS[@]}" ; do
         echo "$v"
-    done | grep -E "^ETH[0-9]+_ALIAS[0-9]+_" | cut -d _ -f 1,2 | sort | uniq
+    done | grep -E "^ETH[0-9]+_ALIAS[0-9]+_" | cut -d _ -f 1,2 | sort -u
 }
 
 get_deleted_interfaces()
 {
     for v in "${DELETED_VARS[@]}" ; do
         echo "$v"
-    done | grep -E "^ETH[0-9]+_MAC" | cut -d _ -f 1 | sort | uniq
+    done | grep -E "^ETH[0-9]+_MAC" | cut -d _ -f 1 | sort -u
 }
 
 get_deleted_aliases()
@@ -101,7 +101,7 @@ get_deleted_aliases()
         for v in "${CHANGED_VARS[@]}" ; do
             echo "$v"
         done | egrep "^ETH[0-9]+_ALIAS[0-9]+_DETACH" | cut -d _ -f 1,2
-    ) | sort | uniq
+    ) | sort -u
 }
 
 get_dev()
@@ -165,7 +165,11 @@ set_interface(){
 	CFG_FILE="$CONFIG_PATH/ifcfg-$DEV"
 	if ! [ -f "$CFG_FILE" ] ; then
 		cat << EOT > $CFG_FILE
+# Created by OpenNebula context scripts. Don't change IPADDR, NETMASK or
+# GATEWAY. They colud be changed by OpenNebula
+
 DEVICE=$DEV
+HWADDR=$MAC
 BOOTPROTO=none
 NM_CONTROLLED=no
 TYPE=Ethernet
@@ -260,13 +264,13 @@ get_interface_mac
 
 # delete aliases
 RECONFIGURED_DEV=()
-while IFS=_ read if_name alias ; do
+while IFS=_ read -u 4 if_name alias ; do
 	if delete_alias "$if_name" "$alias" ; then
 		RECONFIGURED_DEV+=("$DEV")
 		context_done_delete "${if_name}_${alias}_*"
 	fi
-done < <(get_deleted_aliases)
-for d in $(echo ${RECONFIGURED_DEV[@]} | tr ' ' '\n' | sort | uniq ) ; do
+done 4< <(get_deleted_aliases)
+for d in $(echo ${RECONFIGURED_DEV[@]} | tr ' ' '\n' | sort -u ) ; do
 	ifup $d
 done
 
@@ -288,17 +292,17 @@ for if_name in $(get_changed_interfaces) ; do
 done
 
 # add /set aliases
-while IFS=_ read if_name alias ; do
+while IFS=_ read -u 4 if_name alias ; do
 	if set_alias "$if_name" "$alias" ; then
 		RECONFIGURED_DEV+=($DEV)
 		context_done "${if_name}_${alias}_*"
 	fi
-done < <(get_changed_aliases)
+done 4< <(get_changed_aliases)
 
 for if_name in "${INTERFACES_DONE[@]}" ; do
 	context_done "${if_name}_*"
 done
 
-for d in $(echo ${RECONFIGURED_DEV[@]} | tr ' ' '\n' | sort | uniq ) ; do
+for d in $(echo ${RECONFIGURED_DEV[@]} | tr ' ' '\n' | sort -u ) ; do
 	ifup $d
 done
