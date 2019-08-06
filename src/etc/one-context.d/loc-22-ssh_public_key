@@ -16,7 +16,11 @@
 # limitations under the License.                                             #
 #--------------------------------------------------------------------------- #
 
-[ -z "${SSH_PUBLIC_KEY}${EC2_PUBLIC_KEY}" ] && exit 0
+. $(dirname $0)/lib-one-context.sh
+
+if ! context_changed 'SSH_PUBLIC_KEY' ; then
+    exit 0
+fi
 
 if [ -z "${USERNAME}" ]
 then
@@ -44,18 +48,12 @@ function add_keys {
     done
 }
 
-[ -z "${SSH_PUBLIC_KEY}${EC2_PUBLIC_KEY}" ] && exit 0
-
 mkdir -m0700 -p $AUTH_DIR
 
 [ ! -f $AUTH_FILE ] && touch $AUTH_FILE
 
 if [ -n "$SSH_PUBLIC_KEY" ]; then
     echo "$SSH_PUBLIC_KEY" | add_keys
-fi
-
-if [ -n "$EC2_PUBLIC_KEY" ]; then
-    echo "$EC2_PUBLIC_KEY" | add_keys
 fi
 
 chown "${USERNAME}": ${AUTH_DIR} ${AUTH_FILE}
@@ -65,3 +63,5 @@ chmod 600 $AUTH_FILE
 if which restorecon &>/dev/null; then
     restorecon -R -v "${AUTH_DIR}"
 fi
+
+context_done 'SSH_PUBLIC_KEY'
