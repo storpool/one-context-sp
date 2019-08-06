@@ -2,6 +2,11 @@
 
 . $(dirname $0)/lib-one-context.sh
 
+if ! context_changed SET_HOSTNAME DNS_HOSTNAME ; then
+	exit 0
+fi
+
+
 _kernel="$(uname -s)"
 if [ "${_kernel}" = 'FreeBSD' ]; then
     SED_I="sed -i ''"
@@ -88,9 +93,6 @@ function update_hosts() {
 
 #####
 
-if ! context_changed SET_HOSTNAME ; then
-	exit 0
-fi
 
 first_ip=$(get_first_ip)
 
@@ -140,4 +142,7 @@ if [ -n "${name}" ]; then
     if [ -n "${host_ip}" ]; then
         update_hosts "${host_ip}" "${name}" "${hostname}"
     fi
+
+    context_done SET_HOSTNAME DNS_HOSTNAME
+
 fi

@@ -67,3 +67,5 @@ echo search $searchdomains >> /etc/resolv.conf
 if [ -f /etc/sysconfig/network/config ]; then
     sed -i "/^NETCONFIG_DNS_STATIC_SEARCHLIST=/ s/=.*$/=\"$searchdomains\"/" /etc/sysconfig/network/config
 fi
+
+context_done 'ETH[0-9]+_DNS' '^ETH[0-9]+_SEARCH_DOMAIN$'
