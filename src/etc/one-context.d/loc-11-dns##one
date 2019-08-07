@@ -16,9 +16,12 @@
 # limitations under the License.                                             #
 #--------------------------------------------------------------------------- #
 
+
+shopt -s extglob
+
 . $(dirname $0)/lib-one-context.sh
 
-if ! context_changed 'ETH[0-9]+_DNS' '^ETH[0-9]+_SEARCH_DOMAIN$' ; then
+if ! context_changed 'ETH+([0-9])_DNS' 'ETH+([0-9])_SEARCH_DOMAIN' ; then
     exit 0
 fi
 
@@ -68,4 +71,4 @@ if [ -f /etc/sysconfig/network/config ]; then
     sed -i "/^NETCONFIG_DNS_STATIC_SEARCHLIST=/ s/=.*$/=\"$searchdomains\"/" /etc/sysconfig/network/config
 fi
 
-context_done 'ETH[0-9]+_DNS' '^ETH[0-9]+_SEARCH_DOMAIN$'
+context_done 'ETH+([1-9])_DNS' 'ETH+([0-9])_SEARCH_DOMAIN'
