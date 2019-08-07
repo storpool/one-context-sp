@@ -109,6 +109,7 @@ get_deleted_aliases()
 get_dev()
 {
     local mac="$1"
+    [ -z "$mac" ] && return 1
     echo "$MAC_LIST" | grep "$mac" | cut -d' ' -f1 | tail -n1
 }
 
@@ -132,12 +133,23 @@ delete_interface(){
 	IF_INDEX=${IFACE#ETH}
 	UPCASE_DEV="$IFACE"
 	MAC=$(get_iface_var "MAC")
+	if [ -z "$MAC" ] ; then
+            MAC=$(cat $CONTEXT_DIR/deleted/${IFACE}_MAC)
+        fi
+        [ -z "${MAC}" ] && return 1
 	DEV=$(get_dev "$MAC")
+	if [ -z "$DEV" ] ; then
+            intf_file=$(egrep -l -i "^HWADDR=${MAC}" $CONFIG_PATH/ifcfg-* | head -n 1)
+	    [ -z "$intf_file" ] && return 2
+	    DEV=$(basename "$intf_file")
+	    DEV=${DEV#ifcfg-}
+        fi
+
         [ -z "${DEV}" ] && return 1
 
 	ifdown "$DEV"
 	CFG_FILE="$CONFIG_PATH/ifcfg-${DEV}"
-	rm -f "${CFG_FILE}"
+	[ -f "${CFG_FILE}" ] && rm -f "${CFG_FILE}"
 }
 
 delete_alias(){
@@ -148,11 +160,22 @@ delete_alias(){
 	ALIAS_INDEX="${ALIAS#ALIAS}"
 	UPCASE_DEV="$IFACE"
 	MAC=$(get_iface_var "MAC")
+	if [ -z "$MAC" ] ; then
+            MAC=$(cat $CONTEXT_DIR/deleted/${IFACE}_MAC)
+        fi
+        [ -z "${MAC}" ] && return 1
 	DEV=$(get_dev "$MAC")
+	if [ -z "$DEV" ] ; then
+            intf_file=$(egrep -l -i "^HWADDR=${MAC}" $CONFIG_PATH/ifcfg-* | head -n 1)
+	    [ -z "$intf_file" ] && return 2
+	    DEV=$(basename "$intf_file")
+	    DEV=${DEV#ifcfg-}
+        fi
+
         [ -z "${DEV}" ] && return 1
 
 	CFG_FILE="$CONFIG_PATH/ifcfg-${DEV}:${ALIAS_INDEX}"
-	rm -f "${CFG_FILE}"
+	[ -f "${CFG_FILE}" ] && rm -f "${CFG_FILE}"
 }
 
 set_interface(){
