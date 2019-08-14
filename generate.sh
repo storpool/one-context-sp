@@ -39,23 +39,26 @@ fi
 
 ###
 
-VERSION=${VERSION:-5.9.80}
+VERSION=${VERSION:-0.1}
 RELEASE=${RELEASE:-1}
-MAINTAINER=${MAINTAINER:-OpenNebula Systems <support@opennebula.systems>}
+MAINTAINER=${MAINTAINER:-StorPool <support@storpool.com>}
 LICENSE=${LICENSE:-Apache 2.0}
-VENDOR=${VENDOR:-OpenNebula Systems}
+VENDOR=${VENDOR:-StorPool}
 SUMMARY="OpenNebula Contextualization Package"
 DESC="
-Contextualization tools for the virtual machine running in the OpenNebula
-cloud. Based on parameters provided by the cloud controller configures the
-networking, initial user password, SSH keys, runs custom start scripts,
-resizes the root filesystem, and provides tools to communicate with
+This is a replacement package of the original contextualization package by
+OpenNebula Systems.
+
+Contextualization tools for the virtual machine running in
+the OpenNebula cloud. Based on parameters provided by the cloud controller
+configures the networking, initial user password, SSH keys, runs custom start
+scripts, resizes the root filesystem, and provides tools to communicate with
 OneGate service.
 
-Check the OpenNebula web page (http://opennebula.org) to get the support.
+Check the OpenNebula web page (http://opennebula.org) for more info.
 "
 DESCRIPTION=${DESCRIPTION:-$DESC}
-URL=${URL:-http://opennebula.org}
+URL=${URL:-http://storpool.com}
 RELEASE_FULL="${RELEASE}${RELSUFFIX}"
 EXT="${EXT:-${TYPE}}"
 
