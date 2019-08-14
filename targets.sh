@@ -65,12 +65,12 @@ case "${TARGET}" in
         ;;
 
     'el7')
-        NAME=${NAME:-one-context}
+        NAME=${NAME:-one-context-sp}
         RELSUFFIX=${RELSUFFIX:-.el7}
         TYPE=${TYPE:-rpm}
         TAGS=${TAGS:-rpm systemd one}
         DEPENDS=${DEPENDS:-util-linux bash curl bind-utils cloud-utils-growpart parted ruby rubygem-json sudo shadow-utils open-vm-tools qemu-guest-agent}
-        PROVIDES=${PROVIDES:-}
+        PROVIDES=${PROVIDES:-one-context}
         REPLACES=${REPLACES:-cloud-init}
         CONFLICTS=${CONFLICTS:-${REPLACES} one-context-ec2}
         POSTIN=${POSTINST:-pkg/postinstall}
