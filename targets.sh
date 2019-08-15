@@ -71,7 +71,7 @@ case "${TARGET}" in
         TAGS=${TAGS:-rpm systemd one}
         DEPENDS=${DEPENDS:-util-linux bash curl bind-utils cloud-utils-growpart parted ruby rubygem-json sudo shadow-utils open-vm-tools qemu-guest-agent}
         PROVIDES=${PROVIDES:-one-context}
-        REPLACES=${REPLACES:-cloud-init}
+        REPLACES=${REPLACES:-cloud-init one-context}
         CONFLICTS=${CONFLICTS:-${REPLACES} one-context-ec2}
         POSTIN=${POSTINST:-pkg/postinstall}
         PREUN=${PREUN:-pkg/preuninstall}
