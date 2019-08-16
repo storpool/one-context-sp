@@ -6,6 +6,7 @@ SERVICES=${SERVICES:-one-context-local one-context}
 
 rm -f /etc/udev/rules.d/70-persistent-cd.rules
 rm -f /etc/udev/rules.d/70-persistent-net.rules
+rm -rf /var/run/one-context/
 
 # Reload udev rules
 udevadm control --reload >/dev/null 2>&1 || :
@@ -21,6 +22,7 @@ then
 
     for S in ${SERVICES}; do
         systemctl enable "${S}.service" >/dev/null 2>&1
+        systemctl start "${S}.service" >/dev/null 2>&1
     done
 fi
 
@@ -95,26 +97,6 @@ EOT
 fi
 
 # RedHat based distros
-if [ -d /etc/sysconfig/network-scripts ]; then
-    # Prepare network files
-    find /etc/sysconfig/network-scripts -type f \
-        -name 'ifcfg-*' ! -name 'ifcfg-lo' \
-        -exec rm -f {} \;
-
-    if [ "${NETWORK_EC2}" = 'yes' ]; then
-        cat >/etc/sysconfig/network-scripts/ifcfg-eth0 <<EOT
-DEVICE="eth0"
-BOOTPROTO="dhcp"
-ONBOOT="yes"
-TYPE="Ethernet"
-USERCTL="yes"
-PEERDNS="yes"
-IPV6INIT="no"
-NM_CONTROLLED="no"
-PERSISTENT_DHCLIENT="1"
-EOT
-    fi
-fi
 
 # openSUSE based distros
 if [ -d /etc/sysconfig/network ]; then
