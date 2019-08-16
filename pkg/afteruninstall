@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+
+SERVICES=${SERVICES:-one-context-local one-context}
+
+### re-enable systemd services ########################################
+
+if which systemctl >/dev/null 2>&1 && \
+    [ -d /etc/systemd ];
+then
+    systemctl daemon-reload >/dev/null 2>&1 || :
+
+    for S in ${SERVICES}; do
+        if [ -f /usr/lib/systemd/system/${S}.service ];
+        then
+            systemctl enable "${S}.service" 2>&1
+            systemctl start "${S}.service" 2>&1
+        fi
+    done
+fi

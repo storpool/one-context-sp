@@ -77,6 +77,7 @@ case "${TARGET}" in
         PREUN=${PREUN:-pkg/preuninstall}
         POSTUN=${POSTUN:-pkg/postuninstall}
         POSTUP=${POSTUP:-pkg/postupgrade}
+        AFTERUN=${AFTERUN:-one-context:pkg/afteruninstall}
         ;;
 
     'el7_ec2')

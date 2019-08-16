@@ -89,8 +89,9 @@ _POSTIN=$(mktemp)
 _PREUN=$(mktemp)
 _POSTUN=$(mktemp)
 _POSTUP=$(mktemp)
+_AFTERUN=$(mktemp)
 
-trap "rm -rf ${UNAME_PATH} ${BUILD_DIR} ${_POSTIN} ${_PREUN} ${_POSTUN} ${_POSTUP}" EXIT
+trap "rm -rf ${UNAME_PATH} ${BUILD_DIR} ${_POSTIN} ${_PREUN} ${_POSTUN} ${_POSTUP} ${_AFTERUN}" EXIT
 
 while IFS= read -r -d $'\0' SRC; do
     F_TAGS=${SRC##*##}
@@ -174,6 +175,10 @@ else
         cat ${POSTUP} >"${_POSTUP}"
     fi
 
+    if [ -n "${AFTERUN}" ]; then
+        cat ${AFTERUN#*:} >"${_AFTERUN}"
+    fi
+
     fpm --name "${NAME}" --version "${VERSION}" --iteration "${RELEASE_FULL}" \
         --architecture all --license "${LICENSE}" \
         --vendor "${VENDOR}" --maintainer "${MAINTAINER}" \
@@ -183,6 +188,7 @@ else
         ${POSTUP:+ --after-upgrade ${_POSTUP}} \
         ${PREUN:+ --before-remove ${_PREUN}} \
         ${POSTUN:+ --after-remove ${_POSTUN}} \
+        ${AFTERUN:+ --rpm-trigger-after-target-uninstall "${AFTERUN%%:*}: ${_AFTERUN}"} \
         --rpm-os linux \
         --rpm-summary "${SUMMARY}" \
         ${DEPENDS:+ --depends ${DEPENDS// / --depends }} \
