@@ -219,6 +219,8 @@ function get_new_context {
     split_context "$CONTEXT_NEW" "$CONTEXT_DIR/new"
     check_context_dir "$CONTEXT_DIR/new" "$CONTEXT_DIR/current" \
 	    "$CONTEXT_DIR/changed" "$CONTEXT_DIR/deleted"
+    get_event_type "${CONTEXT_DIR}/new"
+    export CONTEXT_EVENT
 }
 
 function mount_dir
@@ -317,6 +319,72 @@ function check_context_dir {
     done
 }
 
+function is_reboot {
+    uptime=$(cut -d ' ' -f 1 /proc/uptime)
+    if [ "$uptime" -lt 120 ] ; then
+        CONTEXT_EVENT=BOOT
+    fi
+}
+
+# If this call is one of: INIT=new instance, BOOT=reboot, RECONFIGURE=reconfigure
+function get_event_type {
+    local new_dir=$1
+
+    # Return the call reason in CONTEXT_EVENT.
+    #
+    # Compares the instance ID stored on disk with the current IID.
+    # Current IID is got from context or if missing is the MAC address of the
+    # first hardware interface (eth*, en*)
+    #
+    # If there is no stored IID, this most probably means the context package
+    # is just installed or upgraded from OpenNebula context on an existig VM,
+    # act as a reconfigure action, preserve configuration.
+    # If stored IID differs from the current IID, this is a new instance,
+    # the VM shall be reconfigured according to the context.
+
+    local stored_iid=""
+    if [ -s $CONTEXT_DIR/INSTANCE_ID ] ; then
+        stored_iid=$(cat $CONTEXT_DIR/INSTANCE_ID)
+    fi
+
+    if [ -f "${new_dir}/INSTACE_ID" ] ; then
+        INSTACE_ID=$(cat ${new_dir}/INSTACE_ID)
+    fi
+
+    local mac_addresses=($(cat /sys/class/net/{eth,en}*/address 2>/dev/null))
+
+    if [ -z "$INSTANCE_ID" ] ; then
+        INSTANCE_ID=${mac_addresses[0]}
+    fi
+
+    if [ -z "$stored_iid" ] ; then
+        # The context package is just installed. Consider this is a reconfigure
+        echo "${INSTANCE_ID}" > $CONTEXT_DIR/INSTANCE_ID
+        CONTEXT_EVENT=RECONFIGURE
+        is_reboot
+        return
+    fi
+
+    if [ "$stored_iid" == "$INSTANCE_ID" ] ; then
+        CONTEXT_EVENT=RECONFIGURE
+        is_reboot
+        return
+    fi
+
+    # check for matching MAC
+    if [[ " ${mac_addresses[@]^^} " =~ " ${stored_iid^^} " ]] ; then
+        # MAC found, this is reconfigure
+        INSTANCE_ID=${stored_iid^^}
+        CONTEXT_EVENT=RECONFIGURE
+        is_reboot
+        return
+    fi
+
+    # This is a new instance
+    CONTEXT_EVENT=INIT
+    return
+}
+
 function run_context {
     local _type=$1
     local _command=$2
@@ -402,4 +470,4 @@ fi
 
 log info "Done"
 
-
+# vim: tabstop=8 expandtab shiftwidth=4 softtabstop=4

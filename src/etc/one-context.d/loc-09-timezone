@@ -16,6 +16,10 @@
 # limitations under the License.                                             #
 #--------------------------------------------------------------------------- #
 
+if [ "$CONTEXT_EVENT" != INIT ]; then
+	exit 0
+fi
+
 if [ -z "$TIMEZONE" ]; then
     exit 0
 fi

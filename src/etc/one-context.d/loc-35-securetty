@@ -1,5 +1,9 @@
 #!/usr/bin/env bash
 
+if [ "$CONTEXT_EVENT" != INIT ]; then
+	exit 0
+fi
+
 _pam_file="/etc/pam.d/login"
 if [ ! -f "${_pam_file}" ]; then
     exit 0

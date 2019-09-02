@@ -285,6 +285,10 @@ set_alias(){
 ##################################
 set -x
 
+if [ "$CONTEXT_EVENT" != "INIT" ] ; then
+    exit 0
+fi
+
 get_interface_mac
 
 # delete aliases
