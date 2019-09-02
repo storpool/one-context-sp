@@ -321,7 +321,7 @@ function check_context_dir {
 
 function is_reboot {
     uptime=$(cut -d ' ' -f 1 /proc/uptime)
-    if [ "$uptime" -lt 120 ] ; then
+    if [ "${uptime%.*}" -lt 120 ] ; then
         CONTEXT_EVENT=BOOT
     fi
 }
