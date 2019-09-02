@@ -347,12 +347,14 @@ function get_event_type {
         stored_iid=$(cat $CONTEXT_DIR/INSTANCE_ID)
     fi
 
-    if [ -f "${new_dir}/INSTACE_ID" ] ; then
-        INSTACE_ID=$(cat ${new_dir}/INSTACE_ID)
-    fi
-
     local mac_addresses=($(cat /sys/class/net/{eth,en}*/address 2>/dev/null))
 
+    if [ -s "${new_dir}/INSTACE_ID" ] ; then
+        INSTACE_ID=$(cat ${new_dir}/INSTACE_ID)
+    fi
+    if [ -z "${INSTANCE_ID}" -a -s "${new_dir}/VMID" ] ; then
+        INSTACE_ID=$(cat ${new_dir}/VMID)
+    fi
     if [ -z "$INSTANCE_ID" ] ; then
         INSTANCE_ID=${mac_addresses[0]}
     fi
