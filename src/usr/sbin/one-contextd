@@ -217,10 +217,10 @@ function get_new_context {
 
     chmod 0400 "${CONTEXT_NEW}"
     split_context "$CONTEXT_NEW" "$CONTEXT_DIR/new"
-    check_context_dir "$CONTEXT_DIR/new" "$CONTEXT_DIR/current" \
-	    "$CONTEXT_DIR/changed" "$CONTEXT_DIR/deleted"
     get_event_type "${CONTEXT_DIR}/new"
     export CONTEXT_EVENT
+    check_context_dir "$CONTEXT_DIR/new" "$CONTEXT_DIR/current" \
+	    "$CONTEXT_DIR/changed" "$CONTEXT_DIR/deleted"
 }
 
 function mount_dir
@@ -284,6 +284,11 @@ function check_context_dir {
     local current_dir=$2
     local changed_dir=$3
     local deleted_dir=$4
+
+    if [ "$CONTEXT_EVENT" == "INIT" ] ; then
+        # This comes from the template image. Clear everything.
+        rm -rf "$current_dir"
+    fi
 
     if ! [ -d "$current_dir" ] ; then
         mkdir -p "$current_dir"
