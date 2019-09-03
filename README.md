@@ -2,25 +2,50 @@
 
 ## Description
 
-This addon provides contextualization packages for the Linux (and, other
-Unix-like) guest virtual machines running in the OpenNebula cloud. Based
-on the provided contextualization parameters, the packages prepare the
-networking in the running guest virt. machine, configure SSH keys, set
-passwords, run custom start scripts, and many others.
+This addon providesa replacement package for one-context by OpenNebula. This
+replacement resolves the number of issues with the original contextualization
+package. Some of the code is rewritten from scratch, another is used with
+littl or no modifications from the original packahe.
+
+The scripts in this package run on the guest VM, and are started on VM
+instantination, on every reboot and on VM reconfigurstion, when CONTEX CD is
+ejected and re-inserted.
+
+The behaviour differs from the original context scripts. The `one-contexd`
+service detects the type of event (INIT, BOOT, CONF) and pass it as
+environment varriable CONTEXT_EVENT to the worker scripts. The scripts behave
+differently depending on the event type and their purpose but the general rule
+is:
+
+  - on INIT, all existing configuration in the OS is cleared and new clean
+    config if created based on the context variables.
+
+  - on BOOT and CONF, changes are applied only if the corresponding context
+    variable has changed.
+
+Exception to this are `loc-*-network` scripts, that skip any network configuration after
+`INIT`, unless `ETH_RECONFIGURE` is set. The default behaviour is the network
+configuration is changed only for new instances, and any subsequent changes are
+assumed to be configured manually. `ETH_RECONFIGURE=yes` override this behavior
+by applying configuration changes every time teh change is detected. In
+these cases network scripts updates only te changed interfaces and only the
+relevant configuration settings.
+
+`net-*` scripts will be never run in INIT event, because they are started in
+the second run, after network services are completed.
+
 
 ## Download
 
-Latest versions can be downloaded from the
-[release page](https://github.com/OpenNebula/addon-context-linux/releases).
-Check the supported OpenNebula versions for each release.
+Latest versions can be downloaded from https://github.com/storpool/one-context-sp
+
 
 ## Install
 
-Documentation on packages installation and guest contextualization can
-be found in the latest stable
-[OpenNebula Operation Guide](http://docs.opennebula.org/stable/operation/vm_setup/context_overview.html).
-For beta releases, refer to the latest
-[development documentation](http://docs.opennebula.org/devel/operation/vm_setup/context_overview.html).
+::
+
+    yum install http://repo.storpoo.com/one-context-sp/centos/7/noarch/Packages/one-context-sp-release-1.0-0.el7.noarch.rpm
+    yum install one-context-sp
 
 ## Tested platforms
 
@@ -28,25 +53,11 @@ List of tested platforms only:
 
 | Platform                        | Versions                               |
 |---------------------------------|----------------------------------------|
-| Amazon Linux                    | 2                                      |
-| CentOS                          | 6, 7                                   |
-| Red Hat Enterprise Linux        | 7                                      |
-| Fedora                          | 28, 29, 30                             |
-| openSUSE                        | 42.3, 15                               |
-| SUSE Linux Enterprise Server    | 12 SP3                                 |
-| Debian                          | 8, 9, 10                               |
-| Devuan                          | 1, 2                                   |
-| Ubuntu                          | 14.04, 16.04, 18.04, 18.10             |
-| Alpine Linux                    | 3.6, 3.7, 3.8                          |
-| FreeBSD                         | 11.2, 12.0                             |
+| CentOS                          | 7                                      |
 
 (the packages might work on other versions or flavours, but those aren't tested)
 
 ## Build own package
-
-Packages for each release for supported guests are available in the
-[release page](https://github.com/OpenNebula/addon-context-linux/releases).
-Also, any version can be built by the scripts provided in this repository.
 
 ### Requirements
 
@@ -86,16 +97,6 @@ the appropriate environment variable.
 
 ## Development
 
-To contribute bug patches or new features, you can use the github Pull Request
-model. It is assumed that code and documentation are contributed under
-the Apache License 2.0.
-
-More info:
-* [How to Contribute](http://opennebula.org/addons/contribute/)
-* Support: [OpenNebula user forum](https://forum.opennebula.org/c/support)
-* Development: [OpenNebula developers forum](https://forum.opennebula.org/c/development)
-* Issues Tracking: Github issues (https://github.com/OpenNebula/addon-context-linux/issues)
-
 ### Repository structure
 
 All code is located under `src/` and structure follows the installation
@@ -111,18 +112,18 @@ Examples:
 
 ### Contextualization scripts
 
-Contextualization scripts, which are executed on every boot and during
-the reconfiguration, are located in `src/etc/one-context.d/`. Scripts are
-divided into following 2 parts:
+Contextualization scripts, which are executed on every boot and during the
+reconfiguration, are located in `src/etc/one-context.d/`. Seen note sin the
+beginning when scripts are executed. Scripts are divided into following 2
+parts:
 
 * local - pre-networking, prefixed with `loc-`
 * post-networking, prefixed with `net-`
 
-All other scripts, which are not prefixed with `loc-` or `net-`, are
-executed as a first during the post-networking contextualization stage.
 
 ## License
 
+Copyright StorPool 2019,
 Copyright 2002-2019, OpenNebula Project, OpenNebula Systems (formerly C12G Labs)
 
 Licensed under the Apache License, Version 2.0 (the "License"); you may
