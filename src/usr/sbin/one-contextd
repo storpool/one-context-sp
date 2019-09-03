@@ -475,6 +475,10 @@ else
     run_context "${TYPE}" "${COMMAND}"
 fi
 
+if [ "${TYPE}" = 'network' ] && [ "${CONTEXT_EVENT}" = 'INIT' ] ; then
+    echo "${INSTANCE_ID}" > "$CONTEXT_DIR/INSTANCE_ID"
+fi
+
 log info "Done"
 
 # vim: tabstop=8 expandtab shiftwidth=4 softtabstop=4
