@@ -188,6 +188,9 @@ set_interface(){
         [ -z "${DEV}" ] && return 1
 
 	CFG_FILE="$CONFIG_PATH/ifcfg-$DEV"
+	if [ "${CONTEXT_EVENT}" == "INIT" ] ; then
+		rm -f "$CFG_FILE" || true
+	fi
 	if ! [ -f "$CFG_FILE" ] ; then
 		cat << EOT > $CFG_FILE
 # Created by OpenNebula context scripts. Don't change IPADDR, NETMASK or
@@ -260,6 +263,10 @@ set_alias(){
 
 	IP=$(get_iface_var "IP")
 	MASK=$(get_iface_var "MASK")
+
+	if [ "${CONTEXT_EVENT}" == "INIT" ] ; then
+		rm -f "$CFG_FILE" || true
+	fi
 	if ! [ -f "$CFG_FILE" ] ; then
 		touch "${CFG_FILE}"
 	fi
@@ -285,7 +292,7 @@ set_alias(){
 ##################################
 set -x
 
-if [ "$CONTEXT_EVENT" != "INIT" ] ; then
+if [ "$CONTEXT_EVENT" != "INIT" ] && ! boolTrue ETH_RECONFIGURE	; then
     exit 0
 fi
 

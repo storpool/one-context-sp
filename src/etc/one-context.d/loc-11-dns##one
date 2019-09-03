@@ -19,8 +19,8 @@
 
 shopt -s extglob
 
-if [ "$CONTEXT_EVENT" != INIT ]; then
-	exit 0
+if [ "$CONTEXT_EVENT" != "INIT" ] && ! boolTrue ETH_RECONFIGURE	; then
+    exit 0
 fi
 
 . $(dirname $0)/lib-one-context.sh

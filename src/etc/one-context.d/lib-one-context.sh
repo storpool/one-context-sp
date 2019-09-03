@@ -45,3 +45,14 @@ context_done_delete(){
 		done
 	done
 }
+
+function boolTrue()
+{
+   case "${!1^^}" in
+       1|Y|YES|TRUE|ON)
+           return 0
+           ;;
+       *)
+           return 1
+   esac
+}

@@ -1,9 +1,5 @@
 #!/usr/bin/env bash
 
-if [ "$CONTEXT_EVENT" != INIT ]; then
-	exit 0
-fi
-
 . $(dirname $0)/lib-one-context.sh
 
 if ! context_changed SET_HOSTNAME DNS_HOSTNAME ; then

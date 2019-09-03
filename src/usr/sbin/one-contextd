@@ -331,7 +331,7 @@ function is_reboot {
     fi
 }
 
-# If this call is one of: INIT=new instance, BOOT=reboot, RECONFIGURE=reconfigure
+# If this call is one of: INIT=new instance, BOOT=reboot, CONF=reconfigure
 function get_event_type {
     local new_dir=$1
 
@@ -367,13 +367,13 @@ function get_event_type {
     if [ -z "$stored_iid" ] ; then
         # The context package is just installed. Consider this is a reconfigure
         echo "${INSTANCE_ID}" > $CONTEXT_DIR/INSTANCE_ID
-        CONTEXT_EVENT=RECONFIGURE
+        CONTEXT_EVENT=CONF
         is_reboot
         return
     fi
 
     if [ "$stored_iid" == "$INSTANCE_ID" ] ; then
-        CONTEXT_EVENT=RECONFIGURE
+        CONTEXT_EVENT=CONF
         is_reboot
         return
     fi
@@ -382,7 +382,7 @@ function get_event_type {
     if [[ " ${mac_addresses[@]^^} " =~ " ${stored_iid^^} " ]] ; then
         # MAC found, this is reconfigure
         INSTANCE_ID=${stored_iid^^}
-        CONTEXT_EVENT=RECONFIGURE
+        CONTEXT_EVENT=CONF
         is_reboot
         return
     fi
