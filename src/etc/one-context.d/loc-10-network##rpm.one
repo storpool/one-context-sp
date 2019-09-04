@@ -176,6 +176,7 @@ delete_alias(){
 
 	CFG_FILE="$CONFIG_PATH/ifcfg-${DEV}:${ALIAS_INDEX}"
 	[ -f "${CFG_FILE}" ] && rm -f "${CFG_FILE}"
+	return 0
 }
 
 set_interface(){
