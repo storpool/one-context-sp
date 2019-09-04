@@ -219,6 +219,7 @@ function get_new_context {
     split_context "$CONTEXT_NEW" "$CONTEXT_DIR/new"
     get_event_type "${CONTEXT_DIR}/new"
     export CONTEXT_EVENT
+    log info "CONTEXT_EVENT=$CONTEXT_EVENT, INSTANCE=$INSTANCE_ID"
     check_context_dir "$CONTEXT_DIR/new" "$CONTEXT_DIR/current" \
 	    "$CONTEXT_DIR/changed" "$CONTEXT_DIR/deleted"
 }

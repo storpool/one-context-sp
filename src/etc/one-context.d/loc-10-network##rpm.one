@@ -291,7 +291,6 @@ set_alias(){
 
 
 ##################################
-set -x
 
 if [ "$CONTEXT_EVENT" != "INIT" ] && ! boolTrue ETH_RECONFIGURE	; then
     exit 0
