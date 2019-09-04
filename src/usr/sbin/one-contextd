@@ -285,9 +285,11 @@ function check_context_dir {
     local changed_dir=$3
     local deleted_dir=$4
 
-    if [ "$CONTEXT_EVENT" == "INIT" ] ; then
+    if [ "$CONTEXT_EVENT" == "INIT" ] && [ "$TYPE" == 'local' ]; then
         # This comes from the template image. Clear everything.
-        rm -rf "$current_dir"
+        # But only when called first time (TYPE=local)
+        rm -rf "$current_dir" "$changed_dir" "$deleted_dir" || true
+
     fi
 
     if ! [ -d "$current_dir" ] ; then
