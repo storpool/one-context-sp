@@ -114,13 +114,24 @@ get_dev()
 }
 
 
+read_from_file(){
+	local file="$1"
+	local attr="$2"
+
+	# remove quotes
+	local $attr
+	eval $(egrep "^${attr}=" "$file")
+	echo -n "${!attr}"
+}
+
+
 add_or_replace(){
 	local file="$1"
 	local attr="$2"
 	local value="$3"
 
 	if egrep "^${attr}=" "$file" ; then
-		sed -i "s/^${attr}=.*/${attr}=${value}/" "$file"
+		sed -i "/^${attr}=/ c${attr}=${value}" "$file"
 	else
 		echo "${attr}=${value}" >> "$file"
 	fi
@@ -176,6 +187,21 @@ delete_alias(){
 
 	CFG_FILE="$CONFIG_PATH/ifcfg-${DEV}:${ALIAS_INDEX}"
 	[ -f "${CFG_FILE}" ] && rm -f "${CFG_FILE}"
+
+
+	# If this is IPv6 alias, rmove it from the main interface config
+	CFG_FILE_MAIN="$CONFIG_PATH/ifcfg-${DEV}"
+	UPCASE_DEV="${IFACE}_${ALIAS}"
+	IP6=$(get_iface_var "IP6")
+        IP6_PREFIX=$(get_iface_var "IP6_PREFIX_LENGTH")
+        IP6_PREFIX=${IP6_PREFIX:-64}
+	if [ -n "${IP6}" ] ; then
+		SECONDARIES=( $(read_from_file "$CFG_FILE_MAIN" IPV6ADDR_SECONDARIES) )
+		SEC=( $( echo "${SECONDARIES[@]}" | tr ' ' '\n' | fgrep -v "${IP6}" ) )
+		add_or_replace "$CFG_FILE_MAIN" "IPV6ADDR_SECONDARIES" "'${SEC[*]}'"
+                ip address delete "${IP6}/${IP6_PREFIX}" dev "$DEV"
+	fi
+
 	return 0
 }
 
@@ -232,6 +258,13 @@ EOT
 				add_or_replace "$CFG_FILE" "ZONE" "${ZONE}"
 				context_done "$v"
 				;;
+			"${IFACE}_IP6" )
+				IP6=$(get_iface_var "IP6")
+				IP6_PREFIX=$(get_iface_var "IP6_PREFIX_LENGTH")
+				IP6_PREFIX=${IP6_PREFIX:-64}
+				add_or_replace "$CFG_FILE" "IPV6ADDR" "${IP6}/${IP6_PREFIX}"
+				context_done "$v" "${IFACE}_IP6_PREFIX_LENGTH"
+				;;
 		esac
 	done
 }
@@ -254,6 +287,7 @@ set_alias(){
 
 	ALIAS_INDEX="${ALIAS#ALIAS}"
 	CFG_FILE="$CONFIG_PATH/ifcfg-${DEV}:${ALIAS_INDEX}"
+	CFG_FILE_MAIN="$CONFIG_PATH/ifcfg-${DEV}"
 	UPCASE_DEV="${IFALIAS}"
 
 	# Is this a detach command ?
@@ -268,23 +302,28 @@ set_alias(){
 	if [ "${CONTEXT_EVENT}" == "INIT" ] ; then
 		rm -f "$CFG_FILE" || true
 	fi
-	if ! [ -f "$CFG_FILE" ] ; then
-		touch "${CFG_FILE}"
-	fi
 
-	for v in "${CHANGED_VARS[@]}" ; do
-		case "$v" in
-			"${IFALIAS}_IP" )
-				IP=$(get_iface_var "IP")
-				add_or_replace "$CFG_FILE" "IPADDR" "${IP}"
-				context_done "$v"
-				;;
-			"${IFALIAS}_MASK" )
-				MASK=$(get_iface_var "MASK")
-				add_or_replace "$CFG_FILE" "NETMASK" "${MASK}"
-				context_done "$v"
-				;;
-		esac
+	if [ -n "$IP" ] ; then 
+            if ! [ -f "$CFG_FILE" ] ; then
+                    touch "${CFG_FILE}"
+            fi
+            add_or_replace "$CFG_FILE" "IPADDR" "${IP}"
+            [ -n "${MASK}" ] && add_or_replace "$CFG_FILE" "NETMASK" "${MASK}"
+            context_done "${IFALIAS}_IP" "${IFALIAS_MASK}"
+        fi
+
+        for v in "${CHANGED_VARS[@]}" ; do
+            case "$v" in
+                "${IFALIAS}_IP6" )
+                    IP6=$(get_iface_var "IP6")
+                    IP6_PREFIX=$(get_iface_var "IP6_PREFIX_LENGTH")
+                    IP6_PREFIX=${IP6_PREFIX:-64}
+                    SECONDARIES=( $(read_from_file "$CFG_FILE_MAIN" IPV6ADDR_SECONDARIES ) ${IP6}/${IP6_PREFIX} )
+                    SECONDARIES=( $(echo "${SECONDARIES[@]}" | tr ' ' '\n' | sort -u ) )
+                    add_or_replace "$CFG_FILE_MAIN" "IPV6ADDR_SECONDARIES" "'${SECONDARIES[*]}'"
+                    context_done "$v" "${IFALIAS}_IP6_PREFIX_LENGTH"
+                    ;;
+            esac
 	done
 
 }
@@ -342,3 +381,5 @@ done
 for d in $(echo ${RECONFIGURED_DEV[@]} | tr ' ' '\n' | sort -u ) ; do
 	ifup $d
 done
+
+# vim: tabstop=8 expandtab shiftwidth=4 softtabstop=4
