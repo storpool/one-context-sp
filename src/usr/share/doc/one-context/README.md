@@ -6,11 +6,11 @@ This package provides a replacement package for one-context by OpenNebula.
 More information about the replaced package (by OpenNebula) can be found here:
 https://github.com/OpenNebula/addon-context-linux
 
-This replacement resolves the number of issues with the original
-contextualization package. The main problem with the original package is that
-change in one parameter causes all configuration setting to be reset.  Some
-parts were rewritten from scratch, others have small or no modifications from
-the original package.
+This replacement resolves number of issues with the original contextualization
+package. The main problem with the original package is that change in one
+parameter causes all configuration setting to be reset.  Some parts were
+rewritten from scratch, others have small or no modifications from the original
+package.
 
 The scripts in this package run on the guest VM, and are started on VM
 instantiation, on every reboot and on VM reconfiguration, when CONTEXT CD is
@@ -68,7 +68,7 @@ hardware change).
 
 On `CONF` event, each script depending on its function will either ignore any
 changes or update the configuration, but only if the corresponding CONTEXT
-variables are changed. This behavior is script specific. See the sections below.
+variables are changed. This behavior is script specific. See sections below.
 
 
 ## Special CONTEXT variables:
@@ -125,7 +125,7 @@ the variables above has been changed`.
 #### `PASSWORD_SERIAL`
 
 Changes of the `PASSWORD_SERIAL` variable, causes the password to be reset,
-even if none of the `PASSWORD*` variables was changed. This can be used to
+even if none of the `PASSWORD\*` variables were changed. This can be used to
 reset the password to the same value as before.  Good practice is to set
 `PASSWORD_SERIAL` to current unix timestamp or use a large random value.
 
@@ -151,10 +151,10 @@ Latest versions can be downloaded from https://github.com/storpool/one-context-s
 
 ## Install
 
-::
-
-    yum install http://repo.storpoo.com/one-context-sp/centos/7/noarch/Packages/one-context-sp-release-1.0-0.el7.noarch.rpm
-    yum install one-context-sp
+```
+yum install http://repo.storpoo.com/one-context-sp/centos/7/noarch/Packages/one-context-sp-release-1.0-0.el7.noarch.rpm
+yum install one-context-sp
+```
 
 ## Tested platforms
 
