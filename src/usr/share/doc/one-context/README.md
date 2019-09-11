@@ -120,12 +120,12 @@ On `INIT` if any of the CONTEXT variables `PASSWORD`,
 are set, the script will change the password of `USERNAME` user (or `root`).
 
 On `BOOT` and `CONF` events, the script will update the password only if any of
-the variables above has been changed`.
+the variables above has been changed.
 
 #### `PASSWORD_SERIAL`
 
 Changes of the `PASSWORD_SERIAL` variable, causes the password to be reset,
-even if none of the `PASSWORD\*` variables were changed. This can be used to
+even if none of the `PASSWORD*` variables were changed. This can be used to
 reset the password to the same value as before.  Good practice is to set
 `PASSWORD_SERIAL` to current unix timestamp or use a large random value.
 
