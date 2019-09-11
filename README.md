@@ -2,18 +2,18 @@
 
 ## Description
 
-This addon providesa replacement package for one-context by OpenNebula. This
+This addon provides a replacement package for one-context by OpenNebula. This
 replacement resolves the number of issues with the original contextualization
 package. Some of the code is rewritten from scratch, another is used with
-littl or no modifications from the original packahe.
+little or no modifications from the original package.
 
 The scripts in this package run on the guest VM, and are started on VM
-instantination, on every reboot and on VM reconfigurstion, when CONTEX CD is
+instantiation, on every reboot and on VM reconfiguration, when CONTEX CD is
 ejected and re-inserted.
 
 The behaviour differs from the original context scripts. The `one-contexd`
 service detects the type of event (INIT, BOOT, CONF) and pass it as
-environment varriable CONTEXT_EVENT to the worker scripts. The scripts behave
+environment variable CONTEXT_EVENT to the worker scripts. The scripts behave
 differently depending on the event type and their purpose but the general rule
 is:
 
@@ -23,13 +23,13 @@ is:
   - on BOOT and CONF, changes are applied only if the corresponding context
     variable has changed.
 
-Exception to this are `loc-*-network` scripts, that skip any network configuration after
-`INIT`, unless `ETH_RECONFIGURE` is set. The default behaviour is the network
-configuration is changed only for new instances, and any subsequent changes are
-assumed to be configured manually. `ETH_RECONFIGURE=yes` override this behavior
-by applying configuration changes every time teh change is detected. In
-these cases network scripts updates only te changed interfaces and only the
-relevant configuration settings.
+Exception to this are `loc-*-network` scripts, that skip any network
+configuration after `INIT`, unless `ETH_RECONFIGURE` is set. The default
+behaviour is the network configuration is changed only for new instances, and
+any subsequent changes are assumed to be configured manually.
+`ETH_RECONFIGURE=yes` override this behavior by applying configuration changes
+every time the change is detected. In these cases the network scripts updates
+only the changed interfaces and only the relevant configuration settings.
 
 `net-*` scripts will be never run in INIT event, because they are started in
 the second run, after network services are completed.
@@ -59,7 +59,7 @@ List of tested platforms only:
 
 ## Build own package
 
-### Requirements
+### Build requirements
 
 * **Linux host**
 * **Ruby** >= 1.9
@@ -70,15 +70,16 @@ List of tested platforms only:
 ### Steps
 
 The script `generate.sh` is able to create all package types and can be
-configured to include more files in the package or change some of
-its parameters. Package type and content are configured by the env. variable
+configured to include more files in the package or change some of its
+parameters. Package type and content are configured by the environment variable
 `TARGET`, the corresponding target must be defined in `target.sh`. Target
-describes the package format, name, dependencies, and files. Files are
-selected by the tags. Set of required tags is defined for the target
-(in `targets.sh`), each file has a list of corresponding tags right in its
-filename (divided by the regular name by 2 hashes `##`, dot-separated).
+describes the package format, name, dependencies, and files. Files are selected
+by the tags. Set of required tags is defined for the target (in `targets.sh`),
+each file has a list of corresponding tags right in its filename (divided by
+the regular name by 2 hashes `##`, dot-separated).
 
-Package name or version can be overridden by env. variables `NAME` and `VERSION`.
+Package name or version can be overridden by environment variables `NAME`
+and `VERSION`.
 
 Examples:
 
