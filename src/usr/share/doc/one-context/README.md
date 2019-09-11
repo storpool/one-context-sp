@@ -58,7 +58,7 @@ On `BOOT` scripts will behave like on `CONF` event. There could be exceptions.
 
 ### `CONF`
 
-This events is when CONTEXT change has been detected. It is triggered by
+This event is when CONTEXT change has been detected. It is triggered by
 ejecting and inserting a CONTEXT CD. Some hardware changes, like attach network
 interface or resize of a disk can also trigger `CONF` event.
 
@@ -108,7 +108,7 @@ script will delete IP alias and the configuration file as well.
 ### `loc-11-dns`
 
 Like `loc-10-network`, this script by default applies changes only on `INIT`
-events. To change this use `ETH_RECONFIGURE`.
+event. To change this use `ETH_RECONFIGURE`.
 
 ### `loc-20-set-username-password`
 
@@ -134,7 +134,7 @@ reset the password to the same value as before.  Good practice is to set
 
 When this package is installed for the first time or when it replaces the
 original OpenNebula package, this is detected by the package as `CONF` event.
-This is intentional and will prevent all co settings to be reinitialized on the
+This is intentional and will prevent all settings to be reinitialized on the
 existing deployments.
 
 ## Force `INIT` on existing deployments
@@ -152,7 +152,7 @@ Latest versions can be downloaded from https://github.com/storpool/one-context-s
 ## Install
 
 ```
-yum install http://repo.storpoo.com/one-context-sp/centos/7/noarch/Packages/one-context-sp-release-1.0-0.el7.noarch.rpm
+yum install http://repo.storpool.com/public/one-context-sp/centos/7/noarch/Packages/one-context-sp-release-1.0-0.el7.noarch.rpm
 yum install one-context-sp
 ```
 
