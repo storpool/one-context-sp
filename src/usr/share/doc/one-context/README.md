@@ -137,6 +137,12 @@ original OpenNebula package, this is detected by the package as `CONF` event.
 This is intentional and will prevent all settings to be reinitialized on the
 existing deployments.
 
+On installation the package will not re-configure anything in the OS. It will
+assume all values idefined in the context are already applied in the OS. If any
+value need to be re-configured it shall be changed in the context after the
+installation, or the respective file in `/var/lib/one-context/current/` shall
+be deleted.
+
 ## Force `INIT` on existing deployments
 
 If you want to force `INIT` event on exsitnig deployment e.g. to reset all
