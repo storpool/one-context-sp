@@ -152,7 +152,7 @@ Latest versions can be downloaded from https://github.com/storpool/one-context-s
 ## Install
 
 ```
-yum install http://repo.storpool.com/public/one-context-sp/centos/7/noarch/Packages/one-context-sp-release-1.0-0.el7.noarch.rpm
+yum install http://repo.storpool.com/public/one-context-sp/centos/7/noarch/Packages/one-context-sp-release-1.0-1.el7.noarch.rpm
 yum install one-context-sp
 ```
 
