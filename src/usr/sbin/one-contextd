@@ -296,6 +296,11 @@ function check_context_dir {
     if ! [ -d "$current_dir" ] ; then
         mkdir -p "$current_dir"
 	chmod 0700 "$current_dir"
+        # If this is a new installation, copy all context vars to the current
+        # to prevent re-initializing on install.
+        if [ "$CONTEXT_EVENT" != "INIT" ] && [ "$TYPE" == 'local' ]; then
+            cp "$new_dir/"* "$current_dir"
+        fi
     fi
 
     if ! [ -d "$changed_dir" ] ; then
