@@ -68,7 +68,7 @@ case "${TARGET}" in
         NAME=${NAME:-one-context-sp}
         RELSUFFIX=${RELSUFFIX:-.el7}
         TYPE=${TYPE:-rpm}
-        TAGS=${TAGS:-rpm systemd one}
+        TAGS=${TAGS:-rpm el7 systemd one}
         DEPENDS=${DEPENDS:-util-linux bash curl bind-utils cloud-utils-growpart parted ruby rubygem-json sudo shadow-utils open-vm-tools qemu-guest-agent}
         PROVIDES=${PROVIDES:-one-context}
         REPLACES=${REPLACES:-cloud-init one-context}
@@ -84,7 +84,7 @@ case "${TARGET}" in
         NAME=${NAME:-one-context-ec2}
         RELSUFFIX=${RELSUFFIX:-.el7}
         TYPE=${TYPE:-rpm}
-        TAGS=${TAGS:-rpm systemd ec2}
+        TAGS=${TAGS:-rpm el7 systemd ec2}
         DEPENDS=${DEPENDS:-util-linux bash curl bind-utils cloud-utils-growpart parted ruby rubygem-json sudo shadow-utils}
         PROVIDES=${PROVIDES:-}
         REPLACES=${REPLACES:-cloud-init}
@@ -99,7 +99,7 @@ case "${TARGET}" in
         NAME=${NAME:-one-context-sp}
         RELSUFFIX=${RELSUFFIX:-.el8}
         TYPE=${TYPE:-rpm}
-        TAGS=${TAGS:-rpm systemd one}
+        TAGS=${TAGS:-rpm el8 systemd one}
         DEPENDS=${DEPENDS:-util-linux bash curl bind-utils cloud-utils-growpart parted ruby rubygem-json sudo shadow-utils open-vm-tools qemu-guest-agent}
         PROVIDES=${PROVIDES:-one-context}
         REPLACES=${REPLACES:-cloud-init one-context}

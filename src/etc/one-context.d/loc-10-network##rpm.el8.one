@@ -1,0 +1,387 @@
+#!/usr/bin/env bash
+
+# -------------------------------------------------------------------------- #
+# Copyright 2010-2016, OpenNebula Systems                                    #
+#                                                                            #
+# Licensed under the Apache License, Version 2.0 (the "License"); you may    #
+# not use this file except in compliance with the License. You may obtain    #
+# a copy of the License at                                                   #
+#                                                                            #
+# http://www.apache.org/licenses/LICENSE-2.0                                 #
+#                                                                            #
+# Unless required by applicable law or agreed to in writing, software        #
+# distributed under the License is distributed on an "AS IS" BASIS,          #
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.   #
+# See the License for the specific language governing permissions and        #
+# limitations under the License.                                             #
+#--------------------------------------------------------------------------- #
+
+unset NETWORK
+
+. $(dirname $0)/lib-one-context.sh
+
+if ! context_changed 'ETH[0-9]*' ; then
+    exit 0
+fi
+
+CONFIG_PATH=/etc/sysconfig/network-scripts
+
+# Gets IP address from a given MAC
+mac2ip() {
+    mac=$1
+
+    let ip_a=0x`echo $mac | cut -d: -f 3`
+    let ip_b=0x`echo $mac | cut -d: -f 4`
+    let ip_c=0x`echo $mac | cut -d: -f 5`
+    let ip_d=0x`echo $mac | cut -d: -f 6`
+
+    ip="$ip_a.$ip_b.$ip_c.$ip_d"
+    echo $ip
+}
+
+is_gateway() {
+    if [ -z "$GATEWAY_IFACE_NUM" ]; then
+        true
+    else
+        [ "$IFACE_INDEX" = "$GATEWAY_IFACE_NUM" ]
+    fi
+}
+
+# Gets the network gateway
+get_gateway() {
+    if is_gateway; then
+        gateway=$(get_iface_var "GATEWAY")
+
+        echo $gateway
+    fi
+}
+
+get_iface_var() {
+    var_name="${UPCASE_DEV}_$1"
+    echo ${!var_name}
+}
+
+
+get_interface_mac()
+{
+    MAC_LIST=$(
+        ip link show | awk '/^[0-9]+: [A-Za-z0-9@]+:/ { device=$2; gsub(/:/, "",device); split(device,dev,"@")} /link\/ether/ { print dev[1]  " " $2 }'
+    )
+}
+
+get_changed_interfaces()
+{
+    for v in "${CHANGED_VARS[@]}" ; do
+        echo "$v"
+    done | grep -E "^ETH[0-9]+_" | egrep -v '^ETH[0-9]+_ALIAS' \
+	    | cut -d _ -f 1 | sort -u
+}
+
+get_changed_aliases()
+{
+    for v in "${CHANGED_VARS[@]}" ; do
+        echo "$v"
+    done | grep -E "^ETH[0-9]+_ALIAS[0-9]+_" | cut -d _ -f 1,2 | sort -u
+}
+
+get_deleted_interfaces()
+{
+    for v in "${DELETED_VARS[@]}" ; do
+        echo "$v"
+    done | grep -E "^ETH[0-9]+_MAC" | cut -d _ -f 1 | sort -u
+}
+
+get_deleted_aliases()
+{
+    (
+        # All aliases with deleted _IP
+        for v in "${DELETED_VARS[@]}" ; do
+            echo "$v"
+        done | grep -E "^ETH[0-9]+_ALIAS[0-9]+_IP" | cut -d _ -f 1,2
+	# ... and all aliases with added _DETACH
+	# this is introduced in 5.8.4.12
+        for v in "${CHANGED_VARS[@]}" ; do
+            echo "$v"
+        done | egrep "^ETH[0-9]+_ALIAS[0-9]+_DETACH" | cut -d _ -f 1,2
+    ) | sort -u
+}
+
+get_dev()
+{
+    local mac="$1"
+    [ -z "$mac" ] && return 1
+    echo "$MAC_LIST" | grep "$mac" | cut -d' ' -f1 | tail -n1
+}
+
+
+read_from_file(){
+	local file="$1"
+	local attr="$2"
+
+	# remove quotes
+	local $attr
+	eval $(egrep "^${attr}=" "$file")
+	echo -n "${!attr}"
+}
+
+
+add_or_replace(){
+	local file="$1"
+	local attr="$2"
+	local value="$3"
+
+	if egrep "^${attr}=" "$file" ; then
+		sed -i "/^${attr}=/ c${attr}=${value}" "$file"
+	else
+		echo "${attr}=${value}" >> "$file"
+	fi
+
+}
+
+delete_interface(){
+	IFACE="$1"
+
+	IF_INDEX=${IFACE#ETH}
+	UPCASE_DEV="$IFACE"
+	MAC=$(get_iface_var "MAC")
+	if [ -z "$MAC" ] ; then
+            MAC=$(cat $CONTEXT_DIR/deleted/${IFACE}_MAC)
+        fi
+        [ -z "${MAC}" ] && return 1
+	DEV=$(get_dev "$MAC")
+	if [ -z "$DEV" ] ; then
+            intf_file=$(egrep -l -i "^HWADDR=${MAC}" $CONFIG_PATH/ifcfg-* | head -n 1)
+	    [ -z "$intf_file" ] && return 2
+	    DEV=$(basename "$intf_file")
+	    DEV=${DEV#ifcfg-}
+        fi
+
+        [ -z "${DEV}" ] && return 1
+
+	ifdown "$DEV"
+	CFG_FILE="$CONFIG_PATH/ifcfg-${DEV}"
+	[ -f "${CFG_FILE}" ] && rm -f "${CFG_FILE}"
+}
+
+delete_alias(){
+	IFACE="$1"
+	ALIAS="$2"
+
+	IF_INDEX=${IFACE#ETH}
+	ALIAS_INDEX="${ALIAS#ALIAS}"
+	UPCASE_DEV="$IFACE"
+	MAC=$(get_iface_var "MAC")
+	if [ -z "$MAC" ] ; then
+            MAC=$(cat $CONTEXT_DIR/deleted/${IFACE}_MAC)
+        fi
+        [ -z "${MAC}" ] && return 1
+	DEV=$(get_dev "$MAC")
+	if [ -z "$DEV" ] ; then
+            intf_file=$(egrep -l -i "^HWADDR=${MAC}" $CONFIG_PATH/ifcfg-* | head -n 1)
+	    [ -z "$intf_file" ] && return 2
+	    DEV=$(basename "$intf_file")
+	    DEV=${DEV#ifcfg-}
+        fi
+
+        [ -z "${DEV}" ] && return 1
+
+	CFG_FILE="$CONFIG_PATH/ifcfg-${DEV}:${ALIAS_INDEX}"
+	[ -f "${CFG_FILE}" ] && rm -f "${CFG_FILE}"
+
+
+	# If this is IPv6 alias, rmove it from the main interface config
+	CFG_FILE_MAIN="$CONFIG_PATH/ifcfg-${DEV}"
+	UPCASE_DEV="${IFACE}_${ALIAS}"
+	IP6=$(get_iface_var "IP6")
+        IP6_PREFIX=$(get_iface_var "IP6_PREFIX_LENGTH")
+        IP6_PREFIX=${IP6_PREFIX:-64}
+	if [ -n "${IP6}" ] ; then
+		SECONDARIES=( $(read_from_file "$CFG_FILE_MAIN" IPV6ADDR_SECONDARIES) )
+		SEC=( $( echo "${SECONDARIES[@]}" | tr ' ' '\n' | fgrep -v "${IP6}" ) )
+		add_or_replace "$CFG_FILE_MAIN" "IPV6ADDR_SECONDARIES" "'${SEC[*]}'"
+                ip address delete "${IP6}/${IP6_PREFIX}" dev "$DEV"
+	fi
+
+	return 0
+}
+
+set_interface(){
+	IFACE="$1"
+	IF_INDEX=${IFACE#ETH}
+	UPCASE_DEV="$IFACE"
+	MAC=$(get_iface_var "MAC")
+	DEV=$(get_dev "$MAC")
+
+        [ -z "${DEV}" ] && return 1
+
+	CFG_FILE="$CONFIG_PATH/ifcfg-$DEV"
+	if [ "${CONTEXT_EVENT}" == "INIT" ] ; then
+		rm -f "$CFG_FILE" || true
+	fi
+	if ! [ -f "$CFG_FILE" ] ; then
+		cat << EOT > $CFG_FILE
+# Created by OpenNebula context scripts. Don't change IPADDR, NETMASK or
+# GATEWAY. They colud be changed by OpenNebula
+
+DEVICE=$DEV
+HWADDR=$MAC
+BOOTPROTO=none
+UUID=$(uuidgen)
+TYPE=Ethernet
+ONBOOT=yes
+EOT
+	fi
+	for v in "${CHANGED_VARS[@]}" ; do
+		case "$v" in
+			"${IFACE}_IP" )
+				IP=$(get_iface_var "IP")
+				add_or_replace "$CFG_FILE" "IPADDR" "${IP}"
+				context_done "$v"
+				;;
+			"${IFACE}_MASK" )
+				MASK=$(get_iface_var "MASK")
+				add_or_replace "$CFG_FILE" "NETMASK" "${MASK}"
+				context_done "$v"
+				;;
+			"${IFACE}_GATEWAY" )
+				GATEWAY=$(get_gateway)
+				add_or_replace "$CFG_FILE" "GATEWAY" "${GATEWAY}"
+				context_done "$v"
+				;;
+			"${IFACE}_MTU" )
+				MTU=$(get_iface_var "MTU")
+				add_or_replace "$CFG_FILE" "MTU" "${MTU}"
+				context_done "$v"
+				;;
+			"${IFACE}_ZONE" )
+				ZONE=$(get_iface_var "ZONE")
+				add_or_replace "$CFG_FILE" "ZONE" "${ZONE}"
+				context_done "$v"
+				;;
+			"${IFACE}_IP6" )
+				IP6=$(get_iface_var "IP6")
+				IP6_PREFIX=$(get_iface_var "IP6_PREFIX_LENGTH")
+				IP6_PREFIX=${IP6_PREFIX:-64}
+				add_or_replace "$CFG_FILE" "IPV6ADDR" "${IP6}/${IP6_PREFIX}"
+				context_done "$v" "${IFACE}_IP6_PREFIX_LENGTH"
+				;;
+		esac
+	done
+}
+
+set_alias(){
+	IFACE="$1"
+	ALIAS="$2"
+	IFALIAS="${IFACE}_${ALIAS}"
+
+	IF_INDEX=${IFACE#ETH}
+	UPCASE_DEV="$IFACE"
+	MAC=$(get_iface_var "MAC")
+	DEV=$(get_dev "$MAC")
+
+	# If ETH0_NOALIAS=YES, dont create any aliases
+	NO_ALIAS=$(get_iface_var "NOALIAS")
+	[ -n "${NO_ALIAS}" ] && return 0
+
+        [ -z "${DEV}" ] && return 1
+
+	ALIAS_INDEX="${ALIAS#ALIAS}"
+        ALIAS_DEVICE="${DEV}:${ALIAS_INDEX}"
+	CFG_FILE="$CONFIG_PATH/ifcfg-${ALIAS_DEVICE}"
+	CFG_FILE_MAIN="$CONFIG_PATH/ifcfg-${DEV}"
+	UPCASE_DEV="${IFALIAS}"
+
+	# Is this a detach command ?
+	DETACHED=$(get_iface_var "DETACH")
+	if [ "${DETACHED^^}" = 'YES' ] ; then
+		return 0
+	fi
+
+	IP=$(get_iface_var "IP")
+	MASK=$(get_iface_var "MASK")
+
+	if [ "${CONTEXT_EVENT}" == "INIT" ] ; then
+		rm -f "$CFG_FILE" || true
+	fi
+
+	if [ -n "$IP" ] ; then 
+            if ! [ -f "$CFG_FILE" ] ; then
+                    touch "${CFG_FILE}"
+            fi
+            add_or_replace "$CFG_FILE" "DEVICE" "${ALIAS_DEVICE}"
+            add_or_replace "$CFG_FILE" "IPADDR" "${IP}"
+            [ -n "${MASK}" ] && add_or_replace "$CFG_FILE" "NETMASK" "${MASK}"
+            context_done "${IFALIAS}_IP" "${IFALIAS_MASK}"
+        fi
+
+        for v in "${CHANGED_VARS[@]}" ; do
+            case "$v" in
+                "${IFALIAS}_IP6" )
+                    IP6=$(get_iface_var "IP6")
+                    IP6_PREFIX=$(get_iface_var "IP6_PREFIX_LENGTH")
+                    IP6_PREFIX=${IP6_PREFIX:-64}
+                    SECONDARIES=( $(read_from_file "$CFG_FILE_MAIN" IPV6ADDR_SECONDARIES ) ${IP6}/${IP6_PREFIX} )
+                    SECONDARIES=( $(echo "${SECONDARIES[@]}" | tr ' ' '\n' | sort -u ) )
+                    add_or_replace "$CFG_FILE_MAIN" "IPV6ADDR_SECONDARIES" "'${SECONDARIES[*]}'"
+                    context_done "$v" "${IFALIAS}_IP6_PREFIX_LENGTH"
+                    ;;
+            esac
+	done
+
+}
+
+
+##################################
+
+if [ "$CONTEXT_EVENT" != "INIT" ] && ! boolTrue ETH_RECONFIGURE	; then
+    exit 0
+fi
+
+get_interface_mac
+
+# delete aliases
+RECONFIGURED_DEV=()
+while IFS=_ read -u 4 if_name alias ; do
+	if delete_alias "$if_name" "$alias" ; then
+		RECONFIGURED_DEV+=("$DEV")
+		context_done_delete "${if_name}_${alias}_*"
+	fi
+done 4< <(get_deleted_aliases)
+for d in $(echo ${RECONFIGURED_DEV[@]} | tr ' ' '\n' | sort -u ) ; do
+	ifup $d
+done
+
+# delete interfaces
+for if_name in $(get_deleted_interfaces) ; do
+	if delete_interface "$if_name" ; then
+		context_done_delete "${if_name}_*"
+	fi
+done
+
+# add interfaces
+RECONFIGURED_DEV=()
+INTERFACES_DONE=()
+for if_name in $(get_changed_interfaces) ; do
+	if set_interface "$if_name" ; then
+		RECONFIGURED_DEV+=($DEV)
+		INTERFACES_DONE+=($if_name)
+	fi
+done
+
+# add /set aliases
+while IFS=_ read -u 4 if_name alias ; do
+	if set_alias "$if_name" "$alias" ; then
+		RECONFIGURED_DEV+=($DEV)
+		context_done "${if_name}_${alias}_*"
+	fi
+done 4< <(get_changed_aliases)
+
+for if_name in "${INTERFACES_DONE[@]}" ; do
+	context_done "${if_name}_*"
+done
+
+for d in $(echo ${RECONFIGURED_DEV[@]} | tr ' ' '\n' | sort -u ) ; do
+	ifup $d
+done
+
+# vim: tabstop=8 expandtab shiftwidth=4 softtabstop=4
