@@ -95,6 +95,22 @@ case "${TARGET}" in
         POSTUP=${POSTUP:-pkg/postupgrade}
         ;;
 
+    'el8')
+        NAME=${NAME:-one-context-sp}
+        RELSUFFIX=${RELSUFFIX:-.el8}
+        TYPE=${TYPE:-rpm}
+        TAGS=${TAGS:-rpm systemd one}
+        DEPENDS=${DEPENDS:-util-linux bash curl bind-utils cloud-utils-growpart parted ruby rubygem-json sudo shadow-utils open-vm-tools qemu-guest-agent}
+        PROVIDES=${PROVIDES:-one-context}
+        REPLACES=${REPLACES:-cloud-init one-context}
+        CONFLICTS=${CONFLICTS:-${REPLACES} one-context-ec2}
+        POSTIN=${POSTINST:-pkg/postinstall}
+        PREUN=${PREUN:-pkg/preuninstall}
+        POSTUN=${POSTUN:-pkg/postuninstall}
+        POSTUP=${POSTUP:-pkg/postupgrade}
+        AFTERUN=${AFTERUN:-one-context:pkg/afteruninstall}
+        ;;
+
     'suse')
         NAME=${NAME:-one-context}
         RELSUFFIX=${RELSUFFIX:-.suse}
