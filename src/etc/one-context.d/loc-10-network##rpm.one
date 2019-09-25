@@ -286,7 +286,8 @@ set_alias(){
         [ -z "${DEV}" ] && return 1
 
 	ALIAS_INDEX="${ALIAS#ALIAS}"
-	CFG_FILE="$CONFIG_PATH/ifcfg-${DEV}:${ALIAS_INDEX}"
+        ALIAS_DEVICE="${DEV}:${ALIAS_INDEX}"
+	CFG_FILE="$CONFIG_PATH/ifcfg-${ALIAS_DEVICE}"
 	CFG_FILE_MAIN="$CONFIG_PATH/ifcfg-${DEV}"
 	UPCASE_DEV="${IFALIAS}"
 
@@ -307,6 +308,7 @@ set_alias(){
             if ! [ -f "$CFG_FILE" ] ; then
                     touch "${CFG_FILE}"
             fi
+            add_or_replace "$CFG_FILE" "DEVICE" "${ALIAS_DEVICE}"
             add_or_replace "$CFG_FILE" "IPADDR" "${IP}"
             [ -n "${MASK}" ] && add_or_replace "$CFG_FILE" "NETMASK" "${MASK}"
             context_done "${IFALIAS}_IP" "${IFALIAS_MASK}"
