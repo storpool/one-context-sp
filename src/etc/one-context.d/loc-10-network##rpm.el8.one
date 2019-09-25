@@ -262,6 +262,7 @@ EOT
 				IP6=$(get_iface_var "IP6")
 				IP6_PREFIX=$(get_iface_var "IP6_PREFIX_LENGTH")
 				IP6_PREFIX=${IP6_PREFIX:-64}
+				add_or_replace "$CFG_FILE_MAIN" "IPV6INIT" "yes"
 				add_or_replace "$CFG_FILE" "IPV6ADDR" "${IP6}/${IP6_PREFIX}"
 				context_done "$v" "${IFACE}_IP6_PREFIX_LENGTH"
 				;;
@@ -323,6 +324,7 @@ set_alias(){
                     SECONDARIES=( $(read_from_file "$CFG_FILE_MAIN" IPV6ADDR_SECONDARIES ) ${IP6}/${IP6_PREFIX} )
                     SECONDARIES=( $(echo "${SECONDARIES[@]}" | tr ' ' '\n' | sort -u ) )
                     add_or_replace "$CFG_FILE_MAIN" "IPV6ADDR_SECONDARIES" "'${SECONDARIES[*]}'"
+                    add_or_replace "$CFG_FILE_MAIN" "IPV6INIT" "yes"
                     context_done "$v" "${IFALIAS}_IP6_PREFIX_LENGTH"
                     ;;
             esac
