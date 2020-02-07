@@ -1,6 +1,6 @@
 # OpenNebula Contextualization Scripts
 
-Copyright (C) 2019 StorPool
+Copyright (C) 2019-2020 StorPool
 
 This package provides a replacement package for one-context by OpenNebula.
 More information about the replaced package (by OpenNebula) can be found here:
