@@ -4,7 +4,8 @@ SUBSYSTEM=="net", ACTION=="add", \
 
 # Handle disk resize
 SUBSYSTEM=="block", ACTION=="change", \
-  ENV{RESIZE}=="1", \
+  ENV{DEVTYPE}=="disk", \
+  ENV{ID_TYPE}=="disk", \
   RUN+="/sbin/service one-context-force start"
 
 # Handle swap hot-attach

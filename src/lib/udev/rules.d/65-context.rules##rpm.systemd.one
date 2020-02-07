@@ -9,7 +9,8 @@ SUBSYSTEM=="block", ACTION=="change", \
 
 # Handle disk resize
 SUBSYSTEM=="block", ACTION=="change", \
-  ENV{RESIZE}=="1", \
+  ENV{DEVTYPE}=="disk", \
+  ENV{ID_TYPE}=="disk", \
   RUN+="/bin/systemctl --no-block start one-context-force.service"
 
 # Handle swap hot-attach
